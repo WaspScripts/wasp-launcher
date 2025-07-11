@@ -3,7 +3,7 @@
 	const role = $derived(page.data.profile?.role)
 </script>
 
-<div class="flex w-full flex-col justify-evenly gap-2 sm:flex-row">
+<div class="flex w-full justify-evenly gap-2">
 	{#if role == "premium"}
 		<span
 			class="inline-block rounded-full bg-yellow-500 px-2.5 py-1 text-center align-baseline text-xs leading-none font-bold whitespace-nowrap text-white xl:px-7 xl:py-5"

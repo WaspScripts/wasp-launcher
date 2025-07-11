@@ -10,16 +10,20 @@
 		{ label: "Wasp", value: "wasp" }
 	]
 
-	let theme = $state(page.data.theme)
+	const { settings, theme } = $derived(page.data)
+
+	// svelte-ignore state_referenced_locally
+	let current = $state(theme) as string
 	let open = $state(false)
+
+	async function updateTheme(value: string) {
+		current = value
+		document.body.setAttribute("data-theme", current)
+		await settings.set("theme", current)
+	}
 </script>
 
-<form
-	id="theme-form"
-	method="POST"
-	action="/?/setTheme"
-	class="input-group hover:preset-tonal my-auto flex"
->
+<div class="input-group hover:preset-tonal my-auto flex">
 	<Popover
 		{open}
 		onOpenChange={(e) => (open = e.open)}
@@ -30,7 +34,7 @@
 	>
 		{#snippet trigger()}
 			<Palette size="16" />
-			<span class="mx-4 my-auto flex lg:hidden xl:flex">{theme}</span>
+			<span class="mx-4 my-auto flex w-16">{current}</span>
 			<ChevronDown size="16" />{/snippet}
 		{#snippet content()}
 			<div class="card w-52">
@@ -43,10 +47,7 @@
 						<button
 							type="submit"
 							class="btn preset-outlined-surface-500 hover:border-primary-500 my-2"
-							onclick={() => {
-								theme = entry.value
-								document.body.setAttribute("data-theme", theme)
-							}}
+							onclick={async () => await updateTheme(entry.value)}
 						>
 							{entry.label}
 						</button>
@@ -55,4 +56,4 @@
 			</div>
 		{/snippet}
 	</Popover>
-</form>
+</div>
