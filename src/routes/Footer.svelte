@@ -1,17 +1,42 @@
 <script lang="ts">
-	import { page } from "$app/state"
+	import { Tooltip } from "@skeletonlabs/skeleton-svelte"
+	import { invoke } from "@tauri-apps/api/core"
 	import Discord from "./Footer/Discord.svelte"
 	import GitHub from "./Footer/GitHub.svelte"
 	import YouTube from "./Footer/YouTube.svelte"
+
+	let { showBtn }: { showBtn?: boolean } = $props()
+
+	async function execute() {
+		const res = await invoke("run_executable", {})
+		console.log(res)
+	}
+	let openState = $state(false)
 </script>
 
 <footer
-	class="bg-surface-200/30 dark:bg-surface-800/30 flex justify-between text-base font-semibold backdrop-blur-md"
+	class="bg-surface-200/30 dark:bg-surface-800/30 sticky bottom-0 flex justify-between text-base font-semibold backdrop-blur-md"
 >
 	<div class="mx-4 my-4 flex gap-2">
 		<GitHub />
 		<Discord />
 		<YouTube />
 	</div>
-	<button class="btn preset-filled-primary-500 mx-4 my-4">Run</button>
+
+	{#if showBtn}
+		<Tooltip
+			open={openState}
+			onOpenChange={(e) => (openState = e.open)}
+			positioning={{ placement: "top" }}
+			triggerBase="underline"
+			contentBase="card preset-filled p-4"
+			openDelay={1000}
+			arrow
+		>
+			{#snippet trigger()}
+				<button class="btn preset-filled-primary-500 mx-4 my-4" onclick={execute}>Open</button>
+			{/snippet}
+			{#snippet content()}Open in Simba{/snippet}
+		</Tooltip>
+	{/if}
 </footer>

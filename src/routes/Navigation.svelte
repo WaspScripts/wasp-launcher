@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from "$app/forms"
 	import { page } from "$app/state"
 	import { Avatar } from "@skeletonlabs/skeleton-svelte"
 	import { LogOut } from "@lucide/svelte"
@@ -26,12 +25,12 @@
 	}
 </script>
 
-<nav class="w-full flex-col text-base">
+<nav class="sticky top-0 w-full flex-col text-base">
 	<div
 		class="bg-surface-200/30 dark:bg-surface-800/30 flex h-full w-full justify-between font-semibold backdrop-blur-md"
 	>
 		<a
-			href="/"
+			href="/scripts"
 			class="hover:text-primary-600-400 text-primary-600-400 mx-4 my-auto flex h-full"
 			aria-label="Navigate to home page"
 		>

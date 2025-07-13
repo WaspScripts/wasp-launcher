@@ -1,17 +1,83 @@
 use std::{
     collections::HashMap,
+    env,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
+    path::PathBuf,
+    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     thread,
 };
 
-use tauri::Emitter;
+use serde_json::json;
+use tauri::{Emitter, Manager, State};
+use tauri_plugin_store::StoreExt;
+
+#[derive(Default)]
+struct ExecutablePaths {
+    simba: PathBuf,
+    runelite: PathBuf,
+    osclient: PathBuf,
+}
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+#[tauri::command]
+fn set_executable_path(
+    app: tauri::AppHandle,
+    paths: State<'_, Mutex<ExecutablePaths>>,
+    exe: String,
+    path: String,
+) {
+    let mut paths = paths.lock().unwrap();
+    match exe.as_str() {
+        "simba" => paths.simba = PathBuf::from(path.clone()),
+        "runelite" => paths.runelite = PathBuf::from(path.clone()),
+        "osclient" => paths.osclient = PathBuf::from(path.clone()),
+        _ => {}
+    }
+
+    let store = app
+        .store("settings.json")
+        .expect("Failed to retrieve settings.json store!");
+    store.set("paths", json!({exe.as_str(): path}));
+}
+
+#[tauri::command]
+fn get_executable_path(paths: State<'_, Mutex<ExecutablePaths>>, exe: String) -> String {
+    let paths = paths.lock().unwrap();
+    match exe.as_str() {
+        "simba" => paths.simba.to_str().unwrap().to_string(),
+        "runelite" => paths.runelite.to_str().unwrap().to_string(),
+        "osclient" => paths.osclient.to_str().unwrap().to_string(),
+        _ => paths.simba.to_str().unwrap().to_string(),
+    }
+}
+
+#[tauri::command]
+async fn run_executable(
+    paths: State<'_, Mutex<ExecutablePaths>>,
+    exe: String,
+    args: Vec<String>,
+) -> Result<String, String> {
+    let paths = paths.lock().unwrap();
+    let path: PathBuf = match exe.as_str() {
+        "simba" => paths.simba.clone(),
+        "runelite" => paths.runelite.clone(),
+        "osclient" => paths.osclient.clone(),
+        _ => paths.simba.clone(),
+    };
+
+    Command::new(path)
+        .args(args)
+        .spawn()
+        .map_err(|err| err.to_string())?;
+
+    Ok("Process started successfully".to_string())
+}
+
 #[tauri::command]
 fn start_server(app: tauri::AppHandle) {
     let Ok(listener) = TcpListener::bind("127.0.0.1:5217") else {
@@ -95,9 +161,67 @@ fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![start_server])
+        .setup(|app: &mut tauri::App| {
+            let settings = app.store("settings.json")?;
+
+            let program_files_str: String = env::var("PROGRAMFILES(X86)").unwrap_or_else(|_| {
+                app.path()
+                    .app_local_data_dir()
+                    .expect("Local Data Dir doesn't exist on this system")
+                    .to_string_lossy()
+                    .into_owned()
+            });
+
+            let program_files: PathBuf = PathBuf::from(program_files_str);
+
+            let paths: serde_json::Value = settings.get("paths").unwrap_or_else(|| {
+                let paths = json!({});
+                settings.set("paths", paths.clone());
+                paths
+            });
+
+            println!("{}", paths);
+
+            app.manage(Mutex::new(ExecutablePaths {
+                simba: paths
+                    .get("simba")
+                    .and_then(|p: &serde_json::Value| p.as_str().map(PathBuf::from))
+                    .unwrap_or_else(|| {
+                        app.path()
+                            .app_local_data_dir()
+                            .expect("App Local Data Dir doesn't exist on this system")
+                            .join("Simba\\2000\\Simba64.exe")
+                    }),
+                runelite: paths
+                    .get("runelite")
+                    .and_then(|p: &serde_json::Value| p.as_str().map(PathBuf::from))
+                    .unwrap_or_else(|| {
+                        app.path()
+                            .local_data_dir()
+                            .expect("Local Data Dir doesn't exist on this system")
+                            .join("RuneLite\\RuneLite.exe")
+                    }),
+                osclient: paths
+                    .get("osclient")
+                    .and_then(|p: &serde_json::Value| p.as_str().map(PathBuf::from))
+                    .unwrap_or_else(|| {
+                        program_files.join(
+                            "Jagex Launcher\\Games\\Old School RuneScape\\Client\\osclient.exe",
+                        )
+                    }),
+            }));
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            set_executable_path,
+            get_executable_path,
+            run_executable,
+            start_server
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

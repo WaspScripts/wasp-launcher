@@ -1,5 +1,4 @@
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from "$env/static/public"
-import type { Script } from "./types/collection"
 import type { Database } from "./types/supabase"
 import { createClient, type User } from "@supabase/supabase-js"
 
@@ -42,18 +41,4 @@ export async function getProfile(userPromise: Promise<User | null>) {
 	if (err) return null
 
 	return data
-}
-
-export async function getScripts() {
-	const { data, error: err } = await supabase
-		.schema("scripts")
-		.from("scripts")
-		.select("id, url, title, description, content, protected!left (username, avatar)")
-		.eq("published", true)
-		.order("title")
-		.overrideTypes<Script[]>()
-
-	if (err) console.error(err)
-
-	return data ?? []
 }

@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { supabase } from "../lib/supabase"
-	import Discord from "../lib/components/Discord.svelte"
-	import Logo from "../lib/components/Logo.svelte"
 	import { invoke } from "@tauri-apps/api/core"
 	import { openUrl } from "@tauri-apps/plugin-opener"
 	import { listen } from "@tauri-apps/api/event"
 	import { goto } from "$app/navigation"
+	import Discord from "$lib/components/Discord.svelte"
+	import Logo from "$lib/components/Logo.svelte"
+
+	let { data } = $props()
+	let { supabase } = $derived(data)
 
 	async function login() {
 		console.log("Logging in with discord...")
@@ -63,12 +65,14 @@
 	}
 </script>
 
-<div class="mx-auto my-24 flex flex-col">
-	<Logo />
-	<form class="flex my-20 items-center" on:submit={async () => await login()}>
-		<button type="submit" class="btn preset-filled-surface-300-700 py-2 hover:preset-tonal">
-			<Discord />
-			<span> Login with Discord </span>
-		</button>
-	</form>
-</div>
+<main class="container mx-auto flex h-screen items-center justify-center">
+	<div class="mx-auto my-24 flex flex-col">
+		<Logo />
+		<form class="my-20 flex items-center" onsubmit={async () => await login()}>
+			<button type="submit" class="btn preset-filled-surface-300-700 hover:preset-tonal py-2">
+				<Discord />
+				<span> Login with Discord </span>
+			</button>
+		</form>
+	</div>
+</main>

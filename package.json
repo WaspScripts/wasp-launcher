@@ -14,11 +14,16 @@
   "license": "MIT",
   "dependencies": {
     "@lucide/svelte": "^0.525.0",
+    "@mdit/plugin-img-lazyload": "^0.22.1",
+    "@shikijs/markdown-it": "^3.7.0",
     "@supabase/supabase-js": "^2.50.4",
     "@tailwindcss/vite": "^4.1.11",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "~2",
     "@tauri-apps/plugin-opener": "~2.4.0",
     "@tauri-apps/plugin-store": "~2.3.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-emoji": "^3.0.0",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {

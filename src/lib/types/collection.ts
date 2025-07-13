@@ -7,5 +7,13 @@ export interface Script {
 	protected: {
 		username: string
 		avatar: string
+		revision: number
+		updated_at: number
+	}
+	stats_limits: {
+		xp_min: number
+		xp_max: number
+		gp_min: number
+		gp_max: number
 	}
 }
