@@ -33,6 +33,7 @@
 			href="/scripts"
 			class="hover:text-primary-600-400 text-primary-600-400 mx-4 my-auto flex h-full"
 			aria-label="Navigate to home page"
+			data-sveltekit-preload-data="false"
 		>
 			<Logo selected={false} />
 		</a>

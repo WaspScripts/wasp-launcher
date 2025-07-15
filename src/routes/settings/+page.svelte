@@ -18,8 +18,8 @@
 	}
 </script>
 
-<main class="container mx-auto">
-	<div class="my-12">
+<main>
+	<div class="m-12">
 		<header>
 			<h1>OSRS Clients:</h1>
 		</header>
@@ -27,8 +27,8 @@
 		<label class="my-4">
 			RuneLite path:
 			<input
-				class="input"
-				bind:value={data.runelite}
+				class="input w-64"
+				value={data.runelite}
 				onclick={async () => await getFile("runelite", data.runelite)}
 			/>
 		</label>
@@ -36,8 +36,8 @@
 		<label class="my-4">
 			OSClient path:
 			<input
-				class="input"
-				bind:value={data.osclient}
+				class="input w-64"
+				value={data.osclient}
 				onclick={async () => await getFile("osclient", data.osclient)}
 			/>
 		</label>
