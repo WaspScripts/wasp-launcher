@@ -8,8 +8,14 @@ export const load = async ({ parent, params: { slug } }) => {
 	}
 
 	if (!slug) {
-		goto("/scripts/" + scripts[0].url)
+		goto("/scripts/" + scripts[0].id)
 	}
 
-	return { scripts }
+	const script = scripts.find((script) => script.id === slug)
+
+	if (!script) {
+		goto("/scripts/" + scripts[0].id)
+	}
+
+	return { scripts, script }
 }

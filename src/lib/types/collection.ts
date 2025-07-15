@@ -10,6 +10,10 @@ export interface Script {
 		revision: number
 		updated_at: number
 	}
+	versions: {
+		simba: string
+		wasplib: string
+	}
 	stats_limits: {
 		xp_min: number
 		xp_max: number

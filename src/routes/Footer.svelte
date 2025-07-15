@@ -4,11 +4,14 @@
 	import Discord from "./Footer/Discord.svelte"
 	import GitHub from "./Footer/GitHub.svelte"
 	import YouTube from "./Footer/YouTube.svelte"
+	import type { Script } from "$lib/types/collection"
 
-	let { showBtn }: { showBtn?: boolean } = $props()
+	let { script }: { script?: Script } = $props()
 
 	async function execute() {
-		const res = await invoke("run_executable", {})
+		const exe = "simba"
+		const args = [script!.id, script!.versions.simba, script!.versions.wasplib]
+		const res = await invoke("run_executable", { exe, args })
 		console.log(res)
 	}
 	let openState = $state(false)
@@ -64,7 +67,7 @@
 		</Tooltip>
 	</div>
 
-	{#if showBtn}
+	{#if script}
 		<Tooltip
 			open={openState}
 			onOpenChange={(e) => (openState = e.open)}

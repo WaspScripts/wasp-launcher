@@ -7,6 +7,8 @@
 	const scripts = $derived(data.scripts!)
 
 	let search = $state("")
+
+	$inspect(data.script)
 </script>
 
 <Navigation />
@@ -21,7 +23,7 @@
 		<ul class="my-2 h-full overflow-y-scroll">
 			{#each scripts as script}
 				<li class="hover:text-primary-500 preset-outlined-success-200-800 flex">
-					<a href="/{script.url}" class="h-full w-full px-2">{script.title}</a>
+					<a href={script.id} class="h-full w-full px-2">{script.title}</a>
 				</li>
 			{/each}
 		</ul>
@@ -33,4 +35,4 @@
 
 	<Sidebar />
 </main>
-<Footer showBtn={true} />
+<Footer script={data.script} />
