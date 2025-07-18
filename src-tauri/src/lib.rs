@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
     env,
-    io::{Read, Write},
+    fs::{create_dir_all, remove_file, File},
+    io::{Cursor, Read, Write},
     net::{TcpListener, TcpStream},
     path::PathBuf,
     process::Command,
@@ -15,6 +16,9 @@ use std::{
 use serde_json::json;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
+
+use tauri_plugin_http::reqwest::{self, Client};
+use zip::ZipArchive;
 
 #[derive(Default)]
 struct ExecutablePaths {
@@ -56,24 +60,119 @@ fn get_executable_path(paths: State<'_, Mutex<ExecutablePaths>>, exe: String) ->
     }
 }
 
+async fn download_and_unzip(
+    url: &str,
+    dest: &PathBuf, // Full path including filename like Simba-simba2000.exe
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Download ZIP to memory
+    let response = Client::new()
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
+
+    let cursor = Cursor::new(response);
+    let mut archive = ZipArchive::new(cursor)?;
+
+    if archive.len() != 1 {
+        return Err(format!("Expected 1 file in ZIP, found {}", archive.len()).into());
+    }
+
+    let mut file = archive.by_index(0)?;
+    if file.name().ends_with('/') {
+        return Err("Unexpected directory in zip".into());
+    }
+
+    // Ensure parent directory exists
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    // Write the file using `dest` as the output path
+    let mut out_file = File::create(dest)?;
+    std::io::copy(&mut file, &mut out_file)?;
+
+    Ok(())
+}
+
+async fn run_simba(path: PathBuf, args: Vec<String>) {
+    if args.len() != 3 {
+        panic!("Expected 3 arguments, but got {}", args.len());
+    }
+
+    let exe_name = format!("Simba-{}.exe", args[1]);
+    let full_path = path.join(exe_name);
+
+    if !full_path.exists() {
+        let zip_path = path.join("Win64.zip");
+        if zip_path.exists() {
+            remove_file(&zip_path).expect("Failed to delete Win64.zip");
+        }
+
+        let url = "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
+        let res = reqwest::get(url).await.expect("Failed to fetch README.md");
+        let body = res.text().await.expect("Failed to read response text");
+
+        let search_token = format!("[{}]", args[1]);
+
+        let line = body
+            .lines()
+            .find(|line| line.contains(&search_token))
+            .expect("Branch not found in README.md");
+
+        let mut win64_url = None;
+
+        for part in line.split('[') {
+            if part.starts_with("Win64](") {
+                if let Some(start) = part.find("](") {
+                    if let Some(end) = part[start + 2..].find(')') {
+                        win64_url = Some(&part[start + 2..start + 2 + end]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let win64_url = win64_url.expect("No Win64 link found");
+        let full_url = format!(
+            "https://github.com/Villavu/Simba-Build-Archive/blob/main{}",
+            win64_url
+        );
+
+        download_and_unzip(&full_url, &full_path)
+            .await
+            .expect("Failed to download or unzip Win64.zip");
+    }
+}
+
 #[tauri::command]
 async fn run_executable(
     paths: State<'_, Mutex<ExecutablePaths>>,
     exe: String,
     args: Vec<String>,
 ) -> Result<String, String> {
-    let paths = paths.lock().unwrap();
-    let path: PathBuf = match exe.as_str() {
-        "simba" => paths.simba.clone(),
-        "runelite" => paths.runelite.clone(),
-        "osclient" => paths.osclient.clone(),
-        _ => paths.simba.clone(),
+    let args_clone = args.clone();
+
+    let path = {
+        let paths = paths.lock().unwrap();
+        match exe.as_str() {
+            "simba" => paths.simba.clone(),
+            "runelite" => paths.runelite.clone(),
+            "osclient" => paths.osclient.clone(),
+            _ => paths.simba.clone(),
+        }
     };
 
-    Command::new(path)
-        .args(args)
-        .spawn()
-        .map_err(|err| err.to_string())?;
+    if exe == "simba" {
+        run_simba(path, args).await;
+    } else {
+        Command::new(path)
+            .args(args_clone)
+            .spawn()
+            .map_err(|err| err.to_string())?;
+    }
 
     Ok("Process started successfully".to_string())
 }
@@ -161,6 +260,7 @@ fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
@@ -183,17 +283,18 @@ pub fn run() {
                 paths
             });
 
-            println!("{}", paths);
-
             app.manage(Mutex::new(ExecutablePaths {
                 simba: paths
                     .get("simba")
                     .and_then(|p: &serde_json::Value| p.as_str().map(PathBuf::from))
                     .unwrap_or_else(|| {
-                        app.path()
+                        let path = app
+                            .path()
                             .app_local_data_dir()
                             .expect("App Local Data Dir doesn't exist on this system")
-                            .join("Simba\\2000\\Simba64.exe")
+                            .join("Simba");
+                        create_dir_all(path.clone()).expect("Failed to create Simba directory");
+                        path
                     }),
                 runelite: paths
                     .get("runelite")
