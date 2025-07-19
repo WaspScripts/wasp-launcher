@@ -5,14 +5,37 @@
 	import GitHub from "./Footer/GitHub.svelte"
 	import YouTube from "./Footer/YouTube.svelte"
 	import type { Script } from "$lib/types/collection"
+	import { page } from "$app/state"
+	import type { SupabaseClient } from "@supabase/supabase-js"
+	import type { Database } from "$lib/types/supabase"
 
 	let { script }: { script?: Script } = $props()
+	const supabase: SupabaseClient<Database> = $derived(page.data.supabase)
+
+	async function saveBlobToFile(blob: Blob, filePath: string) {
+		const arrayBuffer = await blob.arrayBuffer()
+		const bytes = Array.from(new Uint8Array(arrayBuffer))
+
+		await invoke("save_blob", {
+			filePath,
+			data: bytes
+		})
+	}
 
 	async function execute() {
+		const { data, error: err } = await supabase.storage
+			.from("scripts")
+			.download(script!.id + "/" + script!.protected.revision + "/script.simba")
+		if (err) {
+			console.error(err)
+			return
+		}
+
+		await saveBlobToFile(data, "Simba/Scripts/" + script!.id + ".simba")
+
 		const exe = "simba"
 		const args = [script!.id, script!.versions.simba, script!.versions.wasplib]
-		const res = await invoke("run_executable", { exe, args })
-		console.log(res)
+		await invoke("run_executable", { exe, args })
 	}
 	let openState = $state(false)
 </script>

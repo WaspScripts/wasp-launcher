@@ -13,6 +13,7 @@ use std::{
     thread,
 };
 
+use git2::{Cred, FetchOptions, RemoteCallbacks, Repository, StashFlags};
 use serde_json::json;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
@@ -60,6 +61,71 @@ fn get_executable_path(paths: State<'_, Mutex<ExecutablePaths>>, exe: String) ->
     }
 }
 
+fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), git2::Error> {
+    let repo = match Repository::open(plugins_path) {
+        Ok(mut repo) => {
+            // Stash changes (if any)
+            let index = repo.index()?;
+            if index.has_conflicts() || !index.is_empty() {
+                let sig = repo.signature()?;
+                let _ = repo.stash_save(
+                    &sig,
+                    "Auto stash before pull",
+                    Some(StashFlags::INCLUDE_UNTRACKED),
+                );
+            }
+            repo
+        }
+        Err(_) => Repository::clone("https://github.com/WaspScripts/wasp-plugins", plugins_path)?,
+    };
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(|_url, _username_from_url, _allowed_types| Cred::default());
+
+    let mut fetch_opts = FetchOptions::new();
+    fetch_opts.remote_callbacks(callbacks);
+
+    // Pull from origin
+    let mut remote = repo.find_remote("origin")?;
+    remote.fetch(&["main"], Some(&mut fetch_opts), None)?;
+
+    let fetch_head = repo.reference_to_annotated_commit(&repo.find_reference("FETCH_HEAD")?)?;
+    let ref_heads = repo.find_branch("main", git2::BranchType::Local)?;
+    let analysis = repo.merge_analysis(&[&fetch_head])?;
+
+    if analysis.0.is_fast_forward() {
+        let mut reference = ref_heads.into_reference();
+        reference.set_target(fetch_head.id(), "Fast-forward")?;
+        repo.set_head(reference.name().unwrap())?;
+        repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
+    } else {
+        println!("Merge needed or nothing to do");
+    }
+
+    Ok(())
+}
+
+fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
+    create_dir_all(path)?;
+
+    // List of subfolders to create
+    let dirs = [
+        "Configs",
+        "Data",
+        "Includes",
+        "Plugins",
+        "Screenshots",
+        "Scripts",
+    ];
+
+    for dir in &dirs {
+        let subdir = path.join(dir);
+        create_dir_all(&subdir)?;
+    }
+
+    Ok(())
+}
+
 async fn download_and_unzip(
     url: &str,
     dest: &PathBuf, // Full path including filename like Simba-simba2000.exe
@@ -102,10 +168,10 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
         panic!("Expected 3 arguments, but got {}", args.len());
     }
 
-    let exe_name = format!("Simba-{}.exe", args[1]);
-    let full_path = path.join(exe_name);
+    let exe_path = path.join(format!("Simba-{}.exe", args[1]));
+    let script_path = path.join("Scripts").join(args[0].clone() + ".simba");
 
-    if !full_path.exists() {
+    if !exe_path.exists() {
         let zip_path = path.join("Win64.zip");
         if zip_path.exists() {
             remove_file(&zip_path).expect("Failed to delete Win64.zip");
@@ -141,10 +207,17 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
             win64_url
         );
 
-        download_and_unzip(&full_url, &full_path)
+        download_and_unzip(&full_url, &exe_path)
             .await
             .expect("Failed to download or unzip Win64.zip");
     }
+}
+
+#[tauri::command]
+fn save_blob(file_path: String, data: Vec<u8>) -> Result<(), String> {
+    let mut file = File::create(&file_path).map_err(|e| e.to_string())?;
+    file.write_all(&data).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -293,7 +366,9 @@ pub fn run() {
                             .app_local_data_dir()
                             .expect("App Local Data Dir doesn't exist on this system")
                             .join("Simba");
-                        create_dir_all(path.clone()).expect("Failed to create Simba directory");
+
+                        let _ = ensure_simba_directories(&path);
+                        let _ = sync_plugins_repo(&path.join("Plugins"));
                         path
                     }),
                 runelite: paths
@@ -321,7 +396,8 @@ pub fn run() {
             set_executable_path,
             get_executable_path,
             run_executable,
-            start_server
+            start_server,
+            save_blob
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
