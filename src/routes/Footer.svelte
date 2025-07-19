@@ -12,12 +12,18 @@
 	let { script }: { script?: Script } = $props()
 	const supabase: SupabaseClient<Database> = $derived(page.data.supabase)
 
-	async function saveBlobToFile(blob: Blob, filePath: string) {
+	function pad(n: number, size: number) {
+		let s = n + ""
+		while (s.length < size) s = "0" + s
+		return s
+	}
+
+	async function saveBlobToFile(blob: Blob, path: string) {
 		const arrayBuffer = await blob.arrayBuffer()
 		const bytes = Array.from(new Uint8Array(arrayBuffer))
 
 		await invoke("save_blob", {
-			filePath,
+			path,
 			data: bytes
 		})
 	}
@@ -25,16 +31,17 @@
 	async function execute() {
 		const { data, error: err } = await supabase.storage
 			.from("scripts")
-			.download(script!.id + "/" + script!.protected.revision + "/script.simba")
+			.download(script!.id + "/" + pad(script!.protected.revision, 9) + "/script.simba")
 		if (err) {
 			console.error(err)
 			return
 		}
 
-		await saveBlobToFile(data, "Simba/Scripts/" + script!.id + ".simba")
+		const file = script!.url + "-rev-" + script!.protected.revision + ".simba"
+		await saveBlobToFile(data, file)
 
 		const exe = "simba"
-		const args = [script!.id, script!.versions.simba, script!.versions.wasplib]
+		const args = [file, script!.versions.simba, script!.versions.wasplib]
 		await invoke("run_executable", { exe, args })
 	}
 	let openState = $state(false)

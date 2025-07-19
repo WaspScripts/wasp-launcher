@@ -13,7 +13,9 @@ use std::{
     thread,
 };
 
-use git2::{Cred, FetchOptions, RemoteCallbacks, Repository, StashFlags};
+use git2::{
+    Cred, Error, FetchOptions, ObjectType, RemoteCallbacks, Repository, StashFlags, StatusOptions,
+};
 use serde_json::json;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
@@ -61,7 +63,7 @@ fn get_executable_path(paths: State<'_, Mutex<ExecutablePaths>>, exe: String) ->
     }
 }
 
-fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), git2::Error> {
+fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), Error> {
     let repo = match Repository::open(plugins_path) {
         Ok(mut repo) => {
             // Stash changes (if any)
@@ -100,6 +102,54 @@ fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), git2::Error> {
         repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
     } else {
         println!("Merge needed or nothing to do");
+    }
+
+    Ok(())
+}
+
+fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
+    let repo_path = path.join("WaspLib");
+
+    let mut repo = if !repo_path.exists() {
+        Repository::clone("https://github.com/WaspScripts/WaspLib", &repo_path)?
+    } else {
+        Repository::open(&repo_path)?
+    };
+
+    // Resolve tag to commit ID
+    let target_commit_id = {
+        let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
+        let target_obj = tag_ref.peel(ObjectType::Commit)?;
+        target_obj.id()
+    };
+
+    // Get current HEAD commit ID
+    let head_commit_id = repo.head()?.peel_to_commit()?.id();
+
+    if head_commit_id != target_commit_id {
+        // Check if working tree has changes
+        let mut status_opts = StatusOptions::new();
+        let has_changes = {
+            let statuses = repo.statuses(Some(&mut status_opts))?;
+            !statuses.is_empty()
+        }; // <- `statuses` is dropped here
+
+        if has_changes {
+            // Save stash after immutable borrow is dropped
+            repo.stash_save(
+                &repo.signature()?,
+                "Auto-stash before tag checkout",
+                Some(StashFlags::INCLUDE_UNTRACKED),
+            )?;
+        }
+
+        // Re-resolve tag object for checkout
+        let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
+        let target_obj = tag_ref.peel(ObjectType::Commit)?;
+
+        // Checkout the tag
+        repo.set_head_detached(target_commit_id)?;
+        repo.checkout_tree(&target_obj, None)?;
     }
 
     Ok(())
@@ -169,7 +219,6 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
     }
 
     let exe_path = path.join(format!("Simba-{}.exe", args[1]));
-    let script_path = path.join("Scripts").join(args[0].clone() + ".simba");
 
     if !exe_path.exists() {
         let zip_path = path.join("Win64.zip");
@@ -211,11 +260,24 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
             .await
             .expect("Failed to download or unzip Win64.zip");
     }
+
+    let _ = ensure_wasplib_at_tag(path.join("Includes"), &args[2]);
+
+    let script_path = path.join("Scripts").join(args[0].clone() + ".simba");
 }
 
 #[tauri::command]
-fn save_blob(file_path: String, data: Vec<u8>) -> Result<(), String> {
-    let mut file = File::create(&file_path).map_err(|e| e.to_string())?;
+fn save_blob(app: tauri::AppHandle, path: String, data: Vec<u8>) -> Result<(), String> {
+    let final_path = app
+        .path()
+        .app_local_data_dir()
+        .expect("App Local Data Dir doesn't exist on this system")
+        .join("Simba")
+        .join("Scripts")
+        .join(path);
+
+    println!("{}", final_path.to_string_lossy());
+    let mut file = File::create(final_path).map_err(|e| e.to_string())?;
     file.write_all(&data).map_err(|e| e.to_string())?;
     Ok(())
 }
