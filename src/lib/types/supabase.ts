@@ -161,37 +161,6 @@ export type Database = {
 					}
 				]
 			}
-			free_access_old: {
-				Row: {
-					date_end: string
-					date_start: string
-					id: string
-					product: string
-					user_id: string
-				}
-				Insert: {
-					date_end?: string
-					date_start?: string
-					id?: string
-					product: string
-					user_id: string
-				}
-				Update: {
-					date_end?: string
-					date_start?: string
-					id?: string
-					product?: string
-					user_id?: string
-				}
-				Relationships: [
-					{
-						foreignKeyName: "free_access_old_user_id_fkey"
-						columns: ["user_id"]
-						referencedRelation: "profiles"
-						referencedColumns: ["id"]
-					}
-				]
-			}
 			private: {
 				Row: {
 					email: string
@@ -321,46 +290,6 @@ export type Database = {
 					}
 				]
 			}
-			subscriptions_old: {
-				Row: {
-					cancel: boolean
-					date_end: string
-					date_start: string
-					disabled: boolean
-					id: string
-					price: string
-					product: string
-					user_id: string
-				}
-				Insert: {
-					cancel?: boolean
-					date_end?: string
-					date_start?: string
-					disabled?: boolean
-					id: string
-					price: string
-					product: string
-					user_id?: string
-				}
-				Update: {
-					cancel?: boolean
-					date_end?: string
-					date_start?: string
-					disabled?: boolean
-					id?: string
-					price?: string
-					product?: string
-					user_id?: string
-				}
-				Relationships: [
-					{
-						foreignKeyName: "subscriptions_old_user_id_fkey"
-						columns: ["user_id"]
-						referencedRelation: "profiles"
-						referencedColumns: ["id"]
-					}
-				]
-			}
 		}
 		Views: {
 			random_scripters: {
@@ -385,6 +314,10 @@ export type Database = {
 			}
 		}
 		Functions: {
+			can_access: {
+				Args: { accesser_id: string; script_id: string } | { script_id: string }
+				Returns: boolean
+			}
 			can_view_subscription: {
 				Args: { accesser: string; owner: string; product: string }
 				Returns: boolean
@@ -428,13 +361,31 @@ export type Database = {
 	}
 	public: {
 		Tables: {
-			[_ in never]: never
+			json_data: {
+				Row: {
+					content: Json | null
+				}
+				Insert: {
+					content?: Json | null
+				}
+				Update: {
+					content?: Json | null
+				}
+				Relationships: []
+			}
 		}
 		Views: {
 			[_ in never]: never
 		}
 		Functions: {
-			[_ in never]: never
+			get_simba_hash: {
+				Args: Record<PropertyKey, never>
+				Returns: string
+			}
+			get_wasplib_hash: {
+				Args: Record<PropertyKey, never>
+				Returns: string
+			}
 		}
 		Enums: {
 			[_ in never]: never
@@ -448,6 +399,7 @@ export type Database = {
 			bundles: {
 				Row: {
 					author: string
+					avatar: string
 					id: string
 					name: string
 					scripts: string[]
@@ -455,13 +407,15 @@ export type Database = {
 				}
 				Insert: {
 					author: string
+					avatar?: string
 					id?: string
 					name: string
 					scripts: string[]
-					username: string
+					username?: string
 				}
 				Update: {
 					author?: string
+					avatar?: string
 					id?: string
 					name?: string
 					scripts?: string[]
@@ -508,7 +462,7 @@ export type Database = {
 					username: string
 				}
 				Insert: {
-					author: string
+					author?: string
 					avatar: string
 					created_at?: string
 					id: string
@@ -592,6 +546,34 @@ export type Database = {
 					}
 				]
 			}
+			versions: {
+				Row: {
+					id: string
+					revision: number
+					simba: string
+					wasplib: string
+				}
+				Insert: {
+					id?: string
+					revision: number
+					simba?: string
+					wasplib?: string
+				}
+				Update: {
+					id?: string
+					revision?: number
+					simba?: string
+					wasplib?: string
+				}
+				Relationships: [
+					{
+						foreignKeyName: "versions_id_fkey"
+						columns: ["id"]
+						referencedRelation: "scripts"
+						referencedColumns: ["id"]
+					}
+				]
+			}
 		}
 		Views: {
 			author_scripts: {
@@ -615,6 +597,14 @@ export type Database = {
 			get_revision: {
 				Args: { script_id: string }
 				Returns: number
+			}
+			is_author: {
+				Args: { user_id: string; script_id: string }
+				Returns: boolean
+			}
+			is_premium: {
+				Args: { script_id: string }
+				Returns: boolean
 			}
 		}
 		Enums: {
@@ -651,6 +641,30 @@ export type Database = {
 	}
 	stats: {
 		Tables: {
+			simba: {
+				Row: {
+					experience: number
+					gold: number
+					id: string
+					levels: number | null
+					runtime: number
+				}
+				Insert: {
+					experience?: number
+					gold?: number
+					id: string
+					levels?: number | null
+					runtime?: number
+				}
+				Update: {
+					experience?: number
+					gold?: number
+					id?: string
+					levels?: number | null
+					runtime?: number
+				}
+				Relationships: []
+			}
 			stats: {
 				Row: {
 					experience: number
@@ -675,6 +689,45 @@ export type Database = {
 					levels?: number
 					runtime?: number
 					username?: string | null
+				}
+				Relationships: []
+			}
+			website: {
+				Row: {
+					downloads: string[]
+					id: string
+					total: number | null
+				}
+				Insert: {
+					downloads?: string[]
+					id: string
+					total?: number | null
+				}
+				Update: {
+					downloads?: string[]
+					id?: string
+					total?: number | null
+				}
+				Relationships: []
+			}
+			website_monthly: {
+				Row: {
+					date: string
+					downloads: string[]
+					id: string
+					total: number | null
+				}
+				Insert: {
+					date?: string
+					downloads?: string[]
+					id: string
+					total?: number | null
+				}
+				Update: {
+					date?: string
+					downloads?: string[]
+					id?: string
+					total?: number | null
 				}
 				Relationships: []
 			}
@@ -716,6 +769,7 @@ export type Database = {
 					owner: string | null
 					owner_id: string | null
 					public: boolean | null
+					type: Database["storage"]["Enums"]["buckettype"]
 					updated_at: string | null
 				}
 				Insert: {
@@ -728,6 +782,7 @@ export type Database = {
 					owner?: string | null
 					owner_id?: string | null
 					public?: boolean | null
+					type?: Database["storage"]["Enums"]["buckettype"]
 					updated_at?: string | null
 				}
 				Update: {
@@ -740,9 +795,108 @@ export type Database = {
 					owner?: string | null
 					owner_id?: string | null
 					public?: boolean | null
+					type?: Database["storage"]["Enums"]["buckettype"]
 					updated_at?: string | null
 				}
 				Relationships: []
+			}
+			buckets_analytics: {
+				Row: {
+					created_at: string
+					format: string
+					id: string
+					type: Database["storage"]["Enums"]["buckettype"]
+					updated_at: string
+				}
+				Insert: {
+					created_at?: string
+					format?: string
+					id: string
+					type?: Database["storage"]["Enums"]["buckettype"]
+					updated_at?: string
+				}
+				Update: {
+					created_at?: string
+					format?: string
+					id?: string
+					type?: Database["storage"]["Enums"]["buckettype"]
+					updated_at?: string
+				}
+				Relationships: []
+			}
+			iceberg_namespaces: {
+				Row: {
+					bucket_id: string
+					created_at: string
+					id: string
+					name: string
+					updated_at: string
+				}
+				Insert: {
+					bucket_id: string
+					created_at?: string
+					id?: string
+					name: string
+					updated_at?: string
+				}
+				Update: {
+					bucket_id?: string
+					created_at?: string
+					id?: string
+					name?: string
+					updated_at?: string
+				}
+				Relationships: [
+					{
+						foreignKeyName: "iceberg_namespaces_bucket_id_fkey"
+						columns: ["bucket_id"]
+						referencedRelation: "buckets_analytics"
+						referencedColumns: ["id"]
+					}
+				]
+			}
+			iceberg_tables: {
+				Row: {
+					bucket_id: string
+					created_at: string
+					id: string
+					location: string
+					name: string
+					namespace_id: string
+					updated_at: string
+				}
+				Insert: {
+					bucket_id: string
+					created_at?: string
+					id?: string
+					location: string
+					name: string
+					namespace_id: string
+					updated_at?: string
+				}
+				Update: {
+					bucket_id?: string
+					created_at?: string
+					id?: string
+					location?: string
+					name?: string
+					namespace_id?: string
+					updated_at?: string
+				}
+				Relationships: [
+					{
+						foreignKeyName: "iceberg_tables_bucket_id_fkey"
+						columns: ["bucket_id"]
+						referencedRelation: "buckets_analytics"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "iceberg_tables_namespace_id_fkey"
+						columns: ["namespace_id"]
+						referencedRelation: "iceberg_namespaces"
+						referencedColumns: ["id"]
+					}
+				]
 			}
 			migrations: {
 				Row: {
@@ -771,6 +925,7 @@ export type Database = {
 					created_at: string | null
 					id: string
 					last_accessed_at: string | null
+					level: number | null
 					metadata: Json | null
 					name: string | null
 					owner: string | null
@@ -785,6 +940,7 @@ export type Database = {
 					created_at?: string | null
 					id?: string
 					last_accessed_at?: string | null
+					level?: number | null
 					metadata?: Json | null
 					name?: string | null
 					owner?: string | null
@@ -799,6 +955,7 @@ export type Database = {
 					created_at?: string | null
 					id?: string
 					last_accessed_at?: string | null
+					level?: number | null
 					metadata?: Json | null
 					name?: string | null
 					owner?: string | null
@@ -811,6 +968,37 @@ export type Database = {
 				Relationships: [
 					{
 						foreignKeyName: "objects_bucketId_fkey"
+						columns: ["bucket_id"]
+						referencedRelation: "buckets"
+						referencedColumns: ["id"]
+					}
+				]
+			}
+			prefixes: {
+				Row: {
+					bucket_id: string
+					created_at: string | null
+					level: number
+					name: string
+					updated_at: string | null
+				}
+				Insert: {
+					bucket_id: string
+					created_at?: string | null
+					level?: number
+					name: string
+					updated_at?: string | null
+				}
+				Update: {
+					bucket_id?: string
+					created_at?: string | null
+					level?: number
+					name?: string
+					updated_at?: string | null
+				}
+				Relationships: [
+					{
+						foreignKeyName: "prefixes_bucketId_fkey"
 						columns: ["bucket_id"]
 						referencedRelation: "buckets"
 						referencedColumns: ["id"]
@@ -917,9 +1105,17 @@ export type Database = {
 			[_ in never]: never
 		}
 		Functions: {
+			add_prefixes: {
+				Args: { _bucket_id: string; _name: string }
+				Returns: undefined
+			}
 			can_insert_object: {
 				Args: { bucketid: string; name: string; owner: string; metadata: Json }
 				Returns: undefined
+			}
+			delete_prefix: {
+				Args: { _bucket_id: string; _name: string }
+				Returns: boolean
 			}
 			extension: {
 				Args: { name: string }
@@ -930,6 +1126,18 @@ export type Database = {
 				Returns: string
 			}
 			foldername: {
+				Args: { name: string }
+				Returns: string[]
+			}
+			get_level: {
+				Args: { name: string }
+				Returns: number
+			}
+			get_prefix: {
+				Args: { name: string }
+				Returns: string
+			}
+			get_prefixes: {
 				Args: { name: string }
 				Returns: string[]
 			}
@@ -995,9 +1203,66 @@ export type Database = {
 					metadata: Json
 				}[]
 			}
+			search_legacy_v1: {
+				Args: {
+					prefix: string
+					bucketname: string
+					limits?: number
+					levels?: number
+					offsets?: number
+					search?: string
+					sortcolumn?: string
+					sortorder?: string
+				}
+				Returns: {
+					name: string
+					id: string
+					updated_at: string
+					created_at: string
+					last_accessed_at: string
+					metadata: Json
+				}[]
+			}
+			search_v1_optimised: {
+				Args: {
+					prefix: string
+					bucketname: string
+					limits?: number
+					levels?: number
+					offsets?: number
+					search?: string
+					sortcolumn?: string
+					sortorder?: string
+				}
+				Returns: {
+					name: string
+					id: string
+					updated_at: string
+					created_at: string
+					last_accessed_at: string
+					metadata: Json
+				}[]
+			}
+			search_v2: {
+				Args: {
+					prefix: string
+					bucket_name: string
+					limits?: number
+					levels?: number
+					start_after?: string
+				}
+				Returns: {
+					key: string
+					name: string
+					id: string
+					updated_at: string
+					created_at: string
+					metadata: Json
+				}[]
+			}
 		}
 		Enums: {
-			[_ in never]: never
+			buckettype: "STANDARD" | "ANALYTICS"
 		}
 		CompositeTypes: {
 			[_ in never]: never
@@ -1233,7 +1498,7 @@ export type Database = {
 			[_ in never]: never
 		}
 		Enums: {
-			currency: "EUR" | "USD" | "CAD" | "AUD"
+			currency: "eur" | "usd" | "cad" | "aud"
 			cycle: "week" | "month" | "year"
 		}
 		CompositeTypes: {
@@ -1396,11 +1661,13 @@ export const Constants = {
 		Enums: {}
 	},
 	storage: {
-		Enums: {}
+		Enums: {
+			buckettype: ["STANDARD", "ANALYTICS"]
+		}
 	},
 	stripe: {
 		Enums: {
-			currency: ["EUR", "USD", "CAD", "AUD"],
+			currency: ["eur", "usd", "cad", "aud"],
 			cycle: ["week", "month", "year"]
 		}
 	}

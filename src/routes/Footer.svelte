@@ -28,20 +28,41 @@
 		})
 	}
 
+	async function getVersions() {
+		const { data, error: err } = await supabase
+			.schema("scripts")
+			.from("versions")
+			.select("revision, simba, wasplib")
+			.eq("id", script!.id)
+			.order("revision", { ascending: false })
+
+		if (err) {
+			console.error(err)
+			return []
+		}
+		return data
+	}
+
+	const versionsPromise = getVersions()
+	let selected = $state(0)
+
 	async function execute() {
+		const versions = await versionsPromise
+		const version = versions[selected]
+
 		const { data, error: err } = await supabase.storage
 			.from("scripts")
-			.download(script!.id + "/" + pad(script!.protected.revision, 9) + "/script.simba")
+			.download(script!.id + "/" + pad(version.revision, 9) + "/script.simba")
 		if (err) {
 			console.error(err)
 			return
 		}
 
-		const file = script!.url + "-rev-" + script!.protected.revision + ".simba"
+		const file = script!.url + "-rev-" + version.revision + ".simba"
 		await saveBlobToFile(data, file)
 
 		const exe = "simba"
-		const args = [file, script!.versions.simba, script!.versions.wasplib]
+		const args = [file, version.simba, version.wasplib]
 		await invoke("run_executable", { exe, args })
 	}
 	let openState = $state(false)
@@ -98,19 +119,31 @@
 	</div>
 
 	{#if script}
-		<Tooltip
-			open={openState}
-			onOpenChange={(e) => (openState = e.open)}
-			positioning={{ placement: "top" }}
-			triggerBase="underline"
-			contentBase="card preset-filled p-4"
-			openDelay={1000}
-			arrow
-		>
-			{#snippet trigger()}
-				<button class="btn preset-filled-primary-500 mx-4 my-4" onclick={execute}>Open</button>
-			{/snippet}
-			{#snippet content()}Open in Simba{/snippet}
-		</Tooltip>
+		<div class="flex">
+			{#await versionsPromise}
+				<select class="select my-auto"> Loading... </select>
+			{:then versions}
+				<select class="select my-auto" bind:value={selected}>
+					{#each versions as version, idx}
+						<option value={idx}>Revision {version.revision}</option>
+					{/each}
+				</select>
+			{/await}
+
+			<Tooltip
+				open={openState}
+				onOpenChange={(e) => (openState = e.open)}
+				positioning={{ placement: "top" }}
+				triggerBase="underline"
+				contentBase="card preset-filled p-4"
+				openDelay={1000}
+				arrow
+			>
+				{#snippet trigger()}
+					<button class="btn preset-filled-primary-500 mx-4 my-4" onclick={execute}>Open</button>
+				{/snippet}
+				{#snippet content()}Open in Simba{/snippet}
+			</Tooltip>
+		</div>
 	{/if}
 </footer>

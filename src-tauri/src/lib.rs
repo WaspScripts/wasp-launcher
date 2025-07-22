@@ -267,6 +267,45 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
         .map_err(|err| err.to_string());
 }
 
+fn send_html(content: &str) -> String {
+    let html = format!(
+        "<!DOCTYPE html>\n\
+         <html>\n\
+           <head>\n\
+             <meta charset=\"UTF-8\">\n\
+             <link rel=\"icon\" href=\"https://waspscripts.com/favicon.png\">\n\
+             <meta name=\"viewport\" content=\"width=device-width\">\n\
+             <title>WaspScripts</title>\n\
+             <meta name=\"description\" content=\"WaspScripts Simba Login page\">\n\
+             <style>\n\
+               body {{\n\
+                  background-color: #222324;\n\
+                  color: white;\n\
+                  display: flex;\n\
+                  justify-content: center;\n\
+                  height: 100vh;\n\
+                  text-align: center;\n\
+                  flex-direction: column;\n\
+               }}\n\
+             </style>\n\
+           </head>\n\
+          <body>\n\
+            {content}\n\
+          </body>\n\
+        </html>"
+    );
+
+    let headers = format!(
+        "HTTP/1.1 200 OK\r\n\
+         Content-Type: text/html\r\n\
+         Connection: close\r\n\
+         Content-Length: {}\r\n\r\n",
+        html.len()
+    );
+
+    format!("{headers}{html}")
+}
+
 #[tauri::command]
 fn save_blob(app: tauri::AppHandle, path: String, data: Vec<u8>) -> Result<(), String> {
     let final_path = app
@@ -343,8 +382,7 @@ fn start_server(app: tauri::AppHandle) {
 }
 
 fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
-    const HTML: &str = "<html>\r\n    <head><title>Auth Complete</title></head>\r\n    <body>\r\n        <h2>Authentication Complete</h2>\r\n        <p>You may now close this window and return to the app.</p>\r\n    </body>\r\n</html>";
-    let response = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", HTML.len(), HTML);
+    let response = send_html("<h2>Authentication Complete</h2>\r\n        <p>You may now close this window and return to the app.</p>");
 
     let mut buffer = [0; 1024];
     if stream.read(&mut buffer).is_err() {
