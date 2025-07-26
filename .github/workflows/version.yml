@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    if: ${{ github.repository_owner == 'WaspScripts' && github.event.workflow_run.event == 'push' }}
+    if: ${{ github.repository_owner == 'WaspScripts' }}
     runs-on: ubuntu-latest
 
     steps:
