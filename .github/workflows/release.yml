@@ -29,9 +29,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 8
-          run_install: false
-          standalone: true
-          dest: ~/setup-pnpm
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -51,7 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: app-v__VERSION__
-          releaseName: "App v__VERSION__"
+          releaseName: "WaspLauncher v__VERSION__"
           releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
