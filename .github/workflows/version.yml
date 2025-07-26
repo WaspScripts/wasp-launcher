@@ -32,6 +32,6 @@ jobs:
 
       - name: Push changes to main branch
         run: |
-          git add version.simba
+          git add src-tauri/tauri.conf.json
           git commit -m "Automatic version bump to $CURRENT_YEAR.$CURRENT_MONTH.$CURRENT_DAY-$COMMIT_HASH" || echo "No changes to commit on main"
           git push
