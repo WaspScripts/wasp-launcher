@@ -25,7 +25,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: pnpm
+
+      - uses: pnpm/action-setup@v4.1
+        with:
+          version: 8
+          run_install: false
+          standalone: true
+          dest: ~/setup-pnpm
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
