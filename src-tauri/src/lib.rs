@@ -171,10 +171,7 @@ fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
     Ok(())
 }
 
-async fn download_and_unzip(
-    url: &str,
-    dest: &PathBuf, // Full path including filename like Simba-simba2000.exe
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn download_and_unzip(url: &str, dest: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     // Download ZIP to memory
     let response = Client::new()
         .get(url)
@@ -209,7 +206,7 @@ async fn download_and_unzip(
 }
 
 async fn run_simba(path: PathBuf, args: Vec<String>) {
-    if args.len() != 3 {
+    if args.len() != 5 {
         panic!("Expected 3 arguments, but got {}", args.len());
     }
 
@@ -264,10 +261,11 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
         .to_string_lossy()
         .to_string();
 
-    println!("{}", script_file);
+    let script_id: String = format!("script_id={}", args[3]);
+    let script_revision: String = format!("script_revision={}", args[4]);
 
     let _ = Command::new(exe_path)
-        .args([script_file])
+        .args([script_id, script_revision, "--run".to_string(), script_file])
         .spawn()
         .map_err(|err| err.to_string());
 }

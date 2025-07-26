@@ -53,17 +53,23 @@
 
 		const { data, error: err } = await supabase.storage
 			.from("scripts")
-			.download(script!.id + "/" + pad(version.revision, 9) + "/script.simba")
+			.download(script.id + "/" + pad(version.revision, 9) + "/script.simba")
 		if (err) {
 			console.error(err)
 			return
 		}
 
-		const file = script!.url + "-rev-" + version.revision + ".simba"
+		const file = script.url + "-rev-" + version.revision + ".simba"
 		await saveBlobToFile(data, file)
 
 		const exe = "simba"
-		const args = [file, version.simba, version.wasplib]
+		const args = [
+			file,
+			version.simba,
+			version.wasplib,
+			script.id,
+			script.protected.revision.toString()
+		]
 		await invoke("run_executable", { exe, args })
 	}
 	let openState = $state(false)
