@@ -263,10 +263,15 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
 
     let script_id: String = format!("script_id={}", args[3]);
     let script_revision: String = format!("script_revision={}", args[4]);
+    let refresh_token: String = format!("ws_refreshtoken={}", args[5]);
 
     let _ = Command::new(exe_path)
         .args([
-            //script_id, script_revision, "--run".to_string(),
+            script_id,
+            script_revision,
+            refresh_token,
+            "--open".to_string(),
+            "--run".to_string(),
             script_file,
         ])
         .spawn()

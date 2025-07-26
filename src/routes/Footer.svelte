@@ -6,12 +6,13 @@
 	import YouTube from "./Footer/YouTube.svelte"
 	import type { Script } from "$lib/types/collection"
 	import { page } from "$app/state"
-	import type { SupabaseClient } from "@supabase/supabase-js"
+	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
 
 	let data = $props()
 	let script: Script = $derived(data.script)
 	const supabase: SupabaseClient<Database> = $derived(page.data.supabase)
+	const session: Session = $derived(page.data.session)
 
 	function pad(n: number, size: number) {
 		let s = n + ""
@@ -68,7 +69,8 @@
 			version.simba,
 			version.wasplib,
 			script.id,
-			script.protected.revision.toString()
+			script.protected.revision.toString(),
+			session.refresh_token
 		]
 		await invoke("run_executable", { exe, args })
 	}
