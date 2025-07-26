@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { PUBLIC_SUPABASE_URL } from "$env/static/public"
 	import { mardownRenderer } from "$lib/markdown"
 	import { replaceScriptContent } from "$lib/utils"
 	import ScriptHeader from "./ScriptHeader.svelte"
 	let { data } = $props()
-	const script = $derived(data.script)
+	const script = $derived(data.script)!
 </script>
 
 <ScriptHeader
@@ -15,8 +14,7 @@
 >
 	<img
 		class="rounded-md"
-		src={PUBLIC_SUPABASE_URL +
-			"/storage/v1/object/public/imgs/scripts/" +
+		src={"https://db.waspscripts.dev/storage/v1/object/public/imgs/scripts/" +
 			script.id +
 			"/banner.jpg"}
 		alt="Script banner"
