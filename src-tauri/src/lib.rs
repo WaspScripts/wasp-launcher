@@ -115,6 +115,11 @@ fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
     };
 
     let target_commit_id = {
+        repo.find_remote("origin")?.fetch(
+            &[&format!("refs/tags/{}:refs/tags/{}", tag, tag)],
+            None,
+            None,
+        )?;
         let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
         let target_obj = tag_ref.peel(ObjectType::Commit)?;
         target_obj.id()
@@ -433,6 +438,7 @@ fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())

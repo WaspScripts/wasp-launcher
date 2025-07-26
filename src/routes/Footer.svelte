@@ -9,7 +9,8 @@
 	import type { SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
 
-	let { script }: { script?: Script } = $props()
+	let data = $props()
+	let script: Script = $derived(data.script)
 	const supabase: SupabaseClient<Database> = $derived(page.data.supabase)
 
 	function pad(n: number, size: number) {
@@ -28,12 +29,12 @@
 		})
 	}
 
-	async function getVersions() {
+	async function getVersions(id: string) {
 		const { data, error: err } = await supabase
 			.schema("scripts")
 			.from("versions")
 			.select("revision, simba, wasplib")
-			.eq("id", script!.id)
+			.eq("id", id)
 			.order("revision", { ascending: false })
 
 		if (err) {
@@ -43,7 +44,7 @@
 		return data
 	}
 
-	const versionsPromise = getVersions()
+	const versionsPromise = $derived(getVersions(script.id))
 	let selected = $state(0)
 
 	async function execute() {
@@ -140,7 +141,7 @@
 				arrow
 			>
 				{#snippet trigger()}
-					<button class="btn preset-filled-primary-500 mx-4 my-4" onclick={execute}>Open</button>
+					<button class="btn preset-filled-primary-500 mx-4 my-4" onclick={execute}>Run</button>
 				{/snippet}
 				{#snippet content()}Open in Simba{/snippet}
 			</Tooltip>

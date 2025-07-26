@@ -17,7 +17,7 @@ export const load = async ({ depends, url: { searchParams } }) => {
 			.schema("scripts")
 			.from("scripts")
 			.select(
-				"id, url, title, description, content, protected!left (username, avatar, revision), stats_limits!left (xp_min, xp_max, gp_min, gp_max)"
+				"id, url, title, description, content, protected!left (username, avatar, revision, updated_at), stats_limits!left (xp_min, xp_max, gp_min, gp_max)"
 			)
 			.eq("published", true)
 			.order("title")

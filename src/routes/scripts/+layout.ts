@@ -1,5 +1,7 @@
 import { goto } from "$app/navigation"
 
+export const prerender = "auto"
+
 export const load = async ({ parent, params: { slug } }) => {
 	const { session, scripts } = await parent()
 	if (!session) {
