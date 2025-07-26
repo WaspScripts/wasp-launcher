@@ -264,10 +264,11 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
     let script_id: String = format!("script_id={}", args[3]);
     let script_revision: String = format!("script_revision={}", args[4]);
 
-    const ARGS: Vec<String> = [script_file];
-    //const ARGS: Vec<String> = [script_id, script_revision, "--run".to_string(), script_file];
     let _ = Command::new(exe_path)
-        .args(ARGS)
+        .args([
+            //script_id, script_revision, "--run".to_string(),
+            script_file,
+        ])
         .spawn()
         .map_err(|err| err.to_string());
 }
@@ -501,8 +502,5 @@ pub fn run() {
             save_blob
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
-}
         .expect("error while running tauri application");
 }
