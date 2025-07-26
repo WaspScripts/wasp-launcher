@@ -1,10 +1,9 @@
 name: "Publish"
 
 on:
-  workflow_run:
-    workflows: ["Version"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
 
 jobs:
   publish-tauri:
