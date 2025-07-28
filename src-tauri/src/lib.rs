@@ -206,7 +206,7 @@ async fn download_and_unzip(url: &str, dest: &PathBuf) -> Result<(), Box<dyn std
 }
 
 async fn run_simba(path: PathBuf, args: Vec<String>) {
-    if args.len() != 5 {
+    if args.len() != 6 {
         panic!("Expected 3 arguments, but got {}", args.len());
     }
 
@@ -261,19 +261,11 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
         .to_string_lossy()
         .to_string();
 
-    let script_id: String = format!("script_id={}", args[3]);
-    let script_revision: String = format!("script_revision={}", args[4]);
-    let refresh_token: String = format!("ws_refreshtoken={}", args[5]);
-
     let _ = Command::new(exe_path)
-        .args([
-            script_id,
-            script_revision,
-            refresh_token,
-            "--open".to_string(),
-            "--run".to_string(),
-            script_file,
-        ])
+        .args([script_file])
+        .env("SCRIPT_ID", &args[3])
+        .env("SCRIPT_REVISION", &args[4])
+        .env("WASP_REFRESH_TOKEN", &args[5])
         .spawn()
         .map_err(|err| err.to_string());
 }
