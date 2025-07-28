@@ -263,6 +263,8 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
 
     let _ = Command::new(exe_path)
         .args([script_file])
+        .env("SCRIPT_SIMBA_VERSION", &args[1])
+        .env("SCRIPT_WASPLIB_VERSION", &args[2])
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
         .env("WASP_REFRESH_TOKEN", &args[5])
