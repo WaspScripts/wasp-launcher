@@ -78,7 +78,10 @@ fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), Error> {
         }
         Err(_) => {
             println!("Cloning WaspScripts/wasp-plugins repo...");
-            Repository::clone("https://github.com/WaspScripts/wasp-plugins", plugins_path)?
+            Repository::clone(
+                "https://git.waspscripts.dev/WaspScripts/wasp-plugins.git",
+                plugins_path,
+            )?
         }
     };
 
@@ -109,32 +112,41 @@ fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
     let repo_path = path.join("WaspLib");
 
     let mut repo = if !repo_path.exists() {
-        Repository::clone("https://github.com/WaspScripts/WaspLib", &repo_path)?
+        println!("Cloning WaspScripts/WaspLib...");
+        Repository::clone(
+            "https://git.waspscripts.dev/WaspScripts/WaspLib.git",
+            &repo_path,
+        )?
     } else {
         Repository::open(&repo_path)?
     };
 
     let target_commit_id = {
-        repo.find_remote("origin")?.fetch(
-            &[&format!("refs/tags/{}:refs/tags/{}", tag, tag)],
-            None,
-            None,
-        )?;
+        println!("Searching for WaspScripts/WaspLib tag: {}", tag);
+        repo.find_remote("origin")?
+            .fetch(&[&format!("refs/tags/{}", tag)], None, None)
+            .expect("Error: ");
+
+        println!("Searching for WaspScripts/WaspLib tag reference.");
         let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
         let target_obj = tag_ref.peel(ObjectType::Commit)?;
         target_obj.id()
     };
 
+    println!("peel_to_commit for WaspScripts/WaspLib tag reference.");
     let head_commit_id = repo.head()?.peel_to_commit()?.id();
 
     if head_commit_id != target_commit_id {
         let mut status_opts = StatusOptions::new();
+
         let has_changes = {
+            println!("Checking for WaspScripts/WaspLib changes...");
             let statuses = repo.statuses(Some(&mut status_opts))?;
             !statuses.is_empty()
         };
 
         if has_changes {
+            println!("Stashing for WaspScripts/WaspLib changes...");
             repo.stash_save(
                 &repo.signature()?,
                 "Auto-stash before tag checkout",
@@ -142,10 +154,14 @@ fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
             )?;
         }
 
+        println!("find_reference for WaspScripts/WaspLib changes...");
         let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
+        println!("peel for WaspScripts/WaspLib changes...");
         let target_obj = tag_ref.peel(ObjectType::Commit)?;
 
+        println!("peel for WaspScripts/WaspLib changes...");
         repo.set_head_detached(target_commit_id)?;
+        println!("Checking out WaspScripts/WaspLib tag: {}", tag);
         repo.checkout_tree(&target_obj, None)?;
     }
 
@@ -213,6 +229,7 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
     let exe_path = path.join(format!("Simba-{}.exe", args[1]));
 
     if !exe_path.exists() {
+        println!("Downloading Simba-{}.exe", args[1]);
         let zip_path = path.join("Win64.zip");
         if zip_path.exists() {
             remove_file(&zip_path).expect("Failed to delete Win64.zip");
