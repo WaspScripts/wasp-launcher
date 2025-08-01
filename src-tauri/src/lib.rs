@@ -133,7 +133,6 @@ fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
         target_obj.id()
     };
 
-    println!("peel_to_commit for WaspScripts/WaspLib tag reference.");
     let head_commit_id = repo.head()?.peel_to_commit()?.id();
 
     if head_commit_id != target_commit_id {
@@ -154,12 +153,9 @@ fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
             )?;
         }
 
-        println!("find_reference for WaspScripts/WaspLib changes...");
         let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
-        println!("peel for WaspScripts/WaspLib changes...");
         let target_obj = tag_ref.peel(ObjectType::Commit)?;
 
-        println!("peel for WaspScripts/WaspLib changes...");
         repo.set_head_detached(target_commit_id)?;
         println!("Checking out WaspScripts/WaspLib tag: {}", tag);
         repo.checkout_tree(&target_obj, None)?;
