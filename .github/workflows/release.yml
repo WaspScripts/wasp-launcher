@@ -7,6 +7,7 @@ on:
 
 jobs:
   publish-tauri:
+    if: ${{ github.repository_owner == 'WaspScripts' }}
     permissions:
       contents: write
     strategy:
@@ -57,3 +58,18 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Discord notification
+        shell: bash
+        run: |
+          BODY=$(jq -nc \
+            --arg title "WaspLauncher Updated" \
+            --arg desc "${{ github.event.head_commit.message }}" \
+            --arg url  "https://github.com/WaspScripts/wasp-launcher/commit/${{ github.event.head_commit.id }}" \
+            --arg foot "Author: ${{ github.event.head_commit.author.name }}" \
+            --argjson color 16742912 \
+            '{embeds:[{title:$title,description:$desc,url:$url,color:$color,footer:{text:$foot}}]}')
+          curl \
+              -H "Content-Type: application/json" \
+              -d "$BODY" \
+              ${{ secrets.UPDATES_WEBHOOK }}
