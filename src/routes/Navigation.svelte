@@ -27,11 +27,11 @@
 
 <nav class="sticky top-0 w-full flex-col text-base">
 	<div
-		class="bg-surface-200/30 dark:bg-surface-800/30 flex h-full w-full justify-between font-semibold backdrop-blur-md"
+		class="flex h-full w-full justify-between bg-surface-200/30 font-semibold backdrop-blur-md dark:bg-surface-800/30"
 	>
 		<a
 			href="/scripts"
-			class="hover:text-primary-600-400 text-primary-600-400 mx-4 my-auto flex h-full"
+			class="mx-4 my-auto flex h-full text-primary-600-400 hover:text-primary-600-400"
 			aria-label="Navigate to home page"
 			data-sveltekit-preload-data="false"
 		>
@@ -45,7 +45,7 @@
 				class="group flex items-center justify-around p-2"
 				onclick={() => (showProfile = !showProfile)}
 			>
-				<span class="group-hover:text-primary-500 mx-2 my-auto hidden md:block">
+				<span class="mx-2 my-auto hidden group-hover:text-primary-500 md:block">
 					{profile.username}
 				</span>
 
@@ -65,7 +65,7 @@
 	</div>
 
 	<div
-		class="bg-surface-200/30 dark:bg-surface-800/30 absolute z-50 w-full py-14 backdrop-blur-md {showProfile
+		class="absolute z-50 w-full bg-surface-200/30 py-14 backdrop-blur-md dark:bg-surface-800/30 {showProfile
 			? 'flex flex-col'
 			: 'hidden'}"
 	>
@@ -81,7 +81,7 @@
 		<button
 			name="Logout"
 			aria-label="Logout"
-			class="btn preset-filled-secondary-500 mx-auto"
+			class="mx-auto btn preset-filled-secondary-500"
 			onclick={async () => await logout()}
 		>
 			<LogOut />

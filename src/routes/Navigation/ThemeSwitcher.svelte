@@ -23,7 +23,7 @@
 	}
 </script>
 
-<div class="input-group hover:preset-tonal my-auto flex">
+<div class="my-auto input-group flex hover:preset-tonal">
 	<Popover
 		{open}
 		onOpenChange={(e) => (open = e.open)}
@@ -37,7 +37,7 @@
 			<span class="mx-4 my-auto flex w-16">{current}</span>
 			<ChevronDown size="16" />{/snippet}
 		{#snippet content()}
-			<div class="card w-52">
+			<div class="w-52 card">
 				<header class="flex justify-between">
 					<p class="text-xl font-bold">Themes</p>
 					<button class="btn-icon hover:preset-tonal" onclick={() => (open = false)}><X /></button>
@@ -46,7 +46,7 @@
 					{#each themesData as entry (entry.value)}
 						<button
 							type="submit"
-							class="btn preset-outlined-surface-500 hover:border-primary-500 my-2"
+							class="my-2 btn preset-outlined-surface-500 hover:border-primary-500"
 							onclick={async () => await updateTheme(entry.value)}
 						>
 							{entry.label}

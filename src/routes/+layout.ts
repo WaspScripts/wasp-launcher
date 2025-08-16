@@ -12,42 +12,19 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	depends("supabase:auth")
 	console.log("Reloading root layout!")
 
-	async function getScripts() {
-		const { data, error: err } = await supabase
-			.schema("scripts")
-			.from("scripts")
-			.select(
-				"id, url, title, description, content, protected!left (username, avatar, revision, updated_at), stats_limits!left (xp_min, xp_max, gp_min, gp_max)"
-			)
-			.eq("published", true)
-			.order("title")
-			.overrideTypes<Script[]>()
-
-		if (err) {
-			console.error(err)
-			return []
-		}
-
-		return data
-	}
-
 	const promises = await Promise.all([
 		getSession(),
 		storeLoad("settings.json", { autoSave: true }),
-		getScripts()
+		getProfile(getUser())
 	])
 
-	const user = getUser()
 	const settings = promises[1]
-
 	const themeSettings = await Promise.all([settings.get("dark"), settings.get("theme")])
 
 	return {
 		supabase,
 		session: promises[0],
-		user,
-		profile: await getProfile(user),
-		scripts: promises[2],
+		profile: promises[2],
 		settings,
 		dark: (themeSettings[0] as boolean) ?? true,
 		theme: (themeSettings[1] as string) ?? "wasp"
