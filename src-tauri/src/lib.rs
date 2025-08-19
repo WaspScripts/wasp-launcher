@@ -485,7 +485,7 @@ pub fn run() {
             let simba_path = local_data.join("Simba");
             let _ = ensure_simba_directories(&simba_path);
 
-            let plugins_path = simba_path.join("Plugins");
+            let plugins_path = simba_path.join("Plugins").join("wasp-plugins");
             tauri::async_runtime::spawn(async move {
                 let _ = sync_plugins_repo(&plugins_path);
             });
