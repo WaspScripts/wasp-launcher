@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     env,
-    fs::{create_dir_all, remove_file, File},
+    fs::{create_dir_all, remove_dir_all, remove_file, write, File},
     io::{Cursor, Read, Write},
     net::{TcpListener, TcpStream},
     path::PathBuf,
@@ -13,9 +13,7 @@ use std::{
     thread,
 };
 
-use git2::{
-    Cred, Error, FetchOptions, ObjectType, RemoteCallbacks, Repository, StashFlags, StatusOptions,
-};
+use git2::{Cred, Error, FetchOptions, RemoteCallbacks, Repository, StashFlags};
 use serde_json::json;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
@@ -108,58 +106,58 @@ fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), Error> {
     Ok(())
 }
 
-fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Error> {
-    let repo_path = path.join("WaspLib");
+async fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let lib_path = path.join("WaspLib");
+    let zip_path = path.join(format!("{}.zip", tag));
 
-    let mut repo = if !repo_path.exists() {
-        println!("Cloning WaspScripts/WaspLib...");
-        Repository::clone(
-            "https://git.waspscripts.dev/WaspScripts/WaspLib.git",
-            &repo_path,
-        )?
-    } else {
-        Repository::open(&repo_path)?
-    };
-
-    let target_commit_id = {
-        println!("Searching for WaspScripts/WaspLib tag: {}", tag);
-        repo.find_remote("origin")?
-            .fetch(&[&format!("refs/tags/{}", tag)], None, None)
-            .expect("Error: ");
-
-        println!("Searching for WaspScripts/WaspLib tag reference.");
-        let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
-        let target_obj = tag_ref.peel(ObjectType::Commit)?;
-        target_obj.id()
-    };
-
-    let head_commit_id = repo.head()?.peel_to_commit()?.id();
-
-    if head_commit_id != target_commit_id {
-        let mut status_opts = StatusOptions::new();
-
-        let has_changes = {
-            println!("Checking for WaspScripts/WaspLib changes...");
-            let statuses = repo.statuses(Some(&mut status_opts))?;
-            !statuses.is_empty()
-        };
-
-        if has_changes {
-            println!("Stashing for WaspScripts/WaspLib changes...");
-            repo.stash_save(
-                &repo.signature()?,
-                "Auto-stash before tag checkout",
-                Some(StashFlags::INCLUDE_UNTRACKED),
-            )?;
-        }
-
-        let tag_ref = repo.find_reference(&format!("refs/tags/{}", tag))?;
-        let target_obj = tag_ref.peel(ObjectType::Commit)?;
-
-        repo.set_head_detached(target_commit_id)?;
-        println!("Checking out WaspScripts/WaspLib tag: {}", tag);
-        repo.checkout_tree(&target_obj, None)?;
+    // 1. Delete WaspLib folder if it exists
+    if lib_path.exists() {
+        println!("Removing old WaspLib folder...");
+        remove_dir_all(&lib_path)?;
     }
+
+    // 2. Check if zip exists, otherwise download it
+    if !zip_path.exists() {
+        let url = format!(
+            "https://db.waspscripts.dev/storage/v1/object/wasplib/{}.zip",
+            tag
+        );
+        println!("Downloading WaspLib {} from {}", tag, url);
+
+        let response = Client::new()
+            .get(&url).bearer_auth("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc1MTA0MTIwMCwiZXhwIjo0OTA2NzE0ODAwLCJyb2xlIjoiYW5vbiJ9.C_KW5x45BpIyOQrnZc7CKYKjHe0yxB4l-fTSC4z_kYY")
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await?;
+
+        write(&zip_path, &response)?;
+    }
+
+    // 3. Unzip into WaspLib/
+    println!("Extracting {} to {:?}", zip_path.display(), lib_path);
+    let file = File::open(&zip_path)?;
+    let mut archive = ZipArchive::new(file)?;
+
+    create_dir_all(&lib_path)?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let out_path = lib_path.join(file.name());
+
+        if file.is_dir() {
+            create_dir_all(&out_path)?;
+        } else {
+            if let Some(parent) = out_path.parent() {
+                create_dir_all(parent)?;
+            }
+            let mut outfile = File::create(&out_path)?;
+            std::io::copy(&mut file, &mut outfile)?;
+        }
+    }
+
+    println!("WaspLib {} ready at {:?}", tag, lib_path);
 
     Ok(())
 }
@@ -266,7 +264,7 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
             .expect("Failed to download or unzip Win64.zip");
     }
 
-    let _ = ensure_wasplib_at_tag(path.join("Includes"), &args[2]);
+    let _ = ensure_wasplib_at_tag(path.join("Includes"), &args[2]).await;
 
     let script_file: String = path
         .join("Scripts")
