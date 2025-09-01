@@ -398,17 +398,16 @@ fn start_server(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-async fn sign_up(access_token: String, refresh_token: String) -> Result<String, String> {
+async fn sign_up(id: String) -> Result<String, String> {
+    println!("Sign up for user {}", id);
+
     let client = Client::new();
     let url = "https://waspscripts.dev/auth/launcher/";
 
-    // Build request body
     let body = json!({
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "user_id": id
     });
 
-    // Send POST request
     let res = client
         .post(url)
         .header("Content-Type", "application/json")
@@ -418,7 +417,6 @@ async fn sign_up(access_token: String, refresh_token: String) -> Result<String, 
         .map_err(|e| format!("Request error: {}", e))
         .expect("Request error");
 
-    // Get response text (or .json() if you want)
     let text = res
         .text()
         .await

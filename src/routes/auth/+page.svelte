@@ -86,14 +86,7 @@
 			return
 		}
 
-		const {
-			data: { session }
-		} = await supabase.auth.getSession()
-
-		await invoke("sign_up", {
-			accessToken: session?.access_token,
-			refreshToken: session?.refresh_token
-		})
+		await invoke("sign_up", { id: user.id })
 
 		result = await checkProfile(user.id)
 		if (result) {
