@@ -397,6 +397,37 @@ fn start_server(app: tauri::AppHandle) {
     });
 }
 
+#[tauri::command]
+async fn sign_up(access_token: String, refresh_token: String) -> Result<String, String> {
+    let client = Client::new();
+    let url = "https://waspscripts.dev/auth/launcher/";
+
+    // Build request body
+    let body = json!({
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    });
+
+    // Send POST request
+    let res = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Request error: {}", e))
+        .expect("Request error");
+
+    // Get response text (or .json() if you want)
+    let text = res
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))
+        .expect("Failed to read response");
+
+    Ok(text)
+}
+
 fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
     let response = send_html("<h2>Authentication Complete</h2>\r\n        <p>You may now close this window and return to the app.</p>");
 
@@ -509,6 +540,7 @@ pub fn run() {
             get_executable_path,
             run_executable,
             start_server,
+            sign_up,
             save_blob
         ])
         .run(tauri::generate_context!())

@@ -20,7 +20,15 @@
 			}
 		],
 		"security": {
-			"csp": null
+			"csp": {
+				"default-src": [
+					"self",
+					"https://waspscripts.dev",
+					"https://db.waspscripts.dev",
+					"ws://db.waspscripts.dev",
+					"wss://db.waspscripts.dev"
+				]
+			}
 		}
 	},
 	"bundle": {

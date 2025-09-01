@@ -1,7 +1,8 @@
 import { goto } from "$app/navigation"
 
 export const load = async ({ parent }) => {
-	const { session } = await parent()
-	if (!session) goto("/auth")
+	const { session, profile } = await parent()
+	console.log("🔥Loading root page!")
+	if (!session || !profile) goto("/auth")
 	goto("/scripts")
 }

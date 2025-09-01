@@ -4,8 +4,9 @@ import type { Script } from "$lib/types/collection"
 export const prerender = "auto"
 
 export const load = async ({ parent, params: { slug } }) => {
-	const { supabase, session } = await parent()
-	if (!session) goto("/auth")
+	const { supabase, session, profile } = await parent()
+	console.log("📜Loading scripts page!")
+	if (!session || !profile) goto("/auth")
 
 	async function getScripts() {
 		const { data, error: err } = await supabase

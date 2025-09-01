@@ -2,6 +2,7 @@ import { goto } from "$app/navigation"
 import { invoke } from "@tauri-apps/api/core"
 
 export const load = async ({ parent, depends }) => {
+	console.log("🔧Loading settings page!")
 	depends("executable:paths")
 	const promises = await Promise.all([
 		parent(),

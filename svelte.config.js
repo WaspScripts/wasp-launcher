@@ -8,7 +8,21 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte"
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		adapter: adapter({ fallback: "error.html" })
+		adapter: adapter({ fallback: "error.html" }),
+		csp: {
+			mode: "auto",
+			directives: {
+				"connect-src": [
+					"self",
+					"ws://localhost:*",
+					"http://localhost:*",
+					"https://waspscripts.dev",
+					"https://db.waspscripts.dev",
+					"ws://db.waspscripts.dev",
+					"wss://db.waspscripts.dev"
+				]
+			}
+		}
 	}
 }
 

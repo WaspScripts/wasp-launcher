@@ -1,16 +1,15 @@
 import { load as storeLoad } from "@tauri-apps/plugin-store"
 import { getProfile, getSession, getUser, supabase } from "$lib/supabase"
 import { error } from "@sveltejs/kit"
-import type { Script } from "$lib/types/collection"
 export const prerender = true
 export const ssr = false
 
 export const load = async ({ depends, url: { searchParams } }) => {
+	console.log("🚀Loading root layout!")
 	const err = searchParams.get("error")
 	if (err) error(403, "Login error: " + err)
 
 	depends("supabase:auth")
-	console.log("Reloading root layout!")
 
 	const promises = await Promise.all([
 		getSession(),

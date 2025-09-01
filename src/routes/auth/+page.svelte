@@ -2,14 +2,25 @@
 	import { invoke } from "@tauri-apps/api/core"
 	import { openUrl } from "@tauri-apps/plugin-opener"
 	import { listen } from "@tauri-apps/api/event"
-	import { goto } from "$app/navigation"
+	import { invalidate } from "$app/navigation"
 	import Discord from "$lib/components/Discord.svelte"
 	import Logo from "$lib/components/Logo.svelte"
+	import { getUser } from "$lib/supabase"
 
 	let { data } = $props()
 	let { supabase } = $derived(data)
 
-	async function login() {
+	function waitForOAuth(): Promise<{ code?: string; error?: string }> {
+		return new Promise((resolve) => {
+			const unlisten = listen("oauth-callback", (event) => {
+				const { code, error } = event.payload as { code?: string; error?: string }
+				unlisten.then((fn) => fn()) // stop listening after first event
+				resolve({ code, error })
+			})
+		})
+	}
+
+	async function doLogin() {
 		console.log("Logging in with discord...")
 		const { data, error } = await supabase.auth.signInWithOAuth({
 			provider: "discord",
@@ -21,46 +32,73 @@
 			return
 		}
 
-		if (data.url) {
-			await invoke("start_server")
-			await openUrl(data.url)
+		await invoke("start_server")
+		await openUrl(data.url)
 
-			listen("oauth-callback", async (event) => {
-				const { code, error } = event.payload as { code?: string; error?: string }
-				if (code) {
-					console.log("OAuth code:", code)
-					const {
-						data: { user },
-						error: err
-					} = await supabase.auth.exchangeCodeForSession(code)
+		const { code, error: oauthErr } = await waitForOAuth()
 
-					if (err) {
-						console.error(err)
-						return
-					}
+		console.log("OAuth code:", code)
 
-					if (!user) {
-						console.error("Failed to get user.")
-						return
-					}
+		if (!code || oauthErr) {
+			console.error("OAuth error:", oauthErr)
+			return
+		}
 
-					const { count } = await supabase
-						.schema("profiles")
-						.from("profiles")
-						.select("*", { count: "exact", head: true })
-						.eq("id", user.id)
-						.single()
+		const {
+			data: { user },
+			error: err
+		} = await supabase.auth.exchangeCodeForSession(code)
 
-					if (count) {
-						goto("/")
-						return
-					}
+		if (err) {
+			console.error(err)
+			return
+		}
 
-					console.error("No profile! Please login on WaspScripts website first.")
-				} else {
-					console.error("OAuth error:", error)
-				}
-			})
+		return user
+	}
+
+	async function checkProfile(id: string) {
+		const { count } = await supabase
+			.schema("profiles")
+			.from("profiles")
+			.select("*", { count: "exact", head: true })
+			.eq("id", id)
+			.single()
+
+		if (count) return true
+		return false
+	}
+
+	async function login() {
+		let user = await getUser()
+
+		if (!user) {
+			user = (await doLogin()) ?? null
+			if (!user) {
+				console.error("Failed to get user.")
+				return
+			}
+		}
+
+		let result = await checkProfile(user.id)
+		if (result) {
+			await invalidate("supabase:auth")
+			return
+		}
+
+		const {
+			data: { session }
+		} = await supabase.auth.getSession()
+
+		await invoke("sign_up", {
+			accessToken: session?.access_token,
+			refreshToken: session?.refresh_token
+		})
+
+		result = await checkProfile(user.id)
+		if (result) {
+			await invalidate("supabase:auth")
+			return
 		}
 	}
 </script>
@@ -69,7 +107,7 @@
 	<div class="mx-auto my-24 flex flex-col">
 		<Logo />
 		<form class="my-20 flex items-center" onsubmit={async () => await login()}>
-			<button type="submit" class="btn preset-filled-surface-300-700 hover:preset-tonal py-2">
+			<button type="submit" class="btn preset-filled-surface-300-700 py-2 hover:preset-tonal">
 				<Discord />
 				<span> Login with Discord </span>
 			</button>
