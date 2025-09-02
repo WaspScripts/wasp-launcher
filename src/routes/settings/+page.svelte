@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidate } from "$app/navigation"
+	import { getVersion } from "@tauri-apps/api/app"
 	import { invoke } from "@tauri-apps/api/core"
 	import { open } from "@tauri-apps/plugin-dialog"
 
@@ -18,28 +19,32 @@
 	}
 </script>
 
-<main>
-	<div class="m-12">
+<main class="flex flex-col">
+	<div class="m-12 space-y-8 rounded-md preset-outlined-surface-300-700 p-12">
 		<header>
-			<h1>OSRS Clients:</h1>
+			<h1 class="text-xl font-bold">OSRS Clients:</h1>
 		</header>
 
-		<label class="my-4">
+		<label class="label-text">
 			RuneLite path:
 			<input
-				class="input w-64"
+				class="input w-96 preset-filled-surface-200-800"
 				value={data.runelite}
-				onclick={async () => await getFile("runelite", data.runelite)}
+				onclick={async () => await getFile("runelite", data.runelite!)}
 			/>
 		</label>
 
-		<label class="my-4">
+		<label class="label-text">
 			OSClient path:
 			<input
-				class="input w-64"
+				class="input w-96 preset-filled-surface-200-800"
 				value={data.osclient}
-				onclick={async () => await getFile("osclient", data.osclient)}
+				onclick={async () => await getFile("osclient", data.osclient!)}
 			/>
 		</label>
 	</div>
+
+	<span class="w-full text-center font-bold text-surface-800-200">
+		wasp-launcher v{#await getVersion()} Loading...{:then version}{version}{/await}</span
+	>
 </main>
