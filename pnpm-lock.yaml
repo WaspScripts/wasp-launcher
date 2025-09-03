@@ -42,7 +42,7 @@ importers:
         specifier: ~2.3.0
         version: 2.3.0
       '@tauri-apps/plugin-updater':
-        specifier: ~2.9.0
+        specifier: ~2
         version: 2.9.0
       markdown-it:
         specifier: ^14.1.0
