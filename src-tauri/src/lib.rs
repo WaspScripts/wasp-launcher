@@ -18,6 +18,7 @@ use serde_json::json;
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
 
+use tauri_plugin_cli::CliExt;
 use tauri_plugin_http::reqwest::{self, Client};
 use tauri_plugin_updater::UpdaterExt;
 use zip::ZipArchive;
@@ -479,12 +480,27 @@ fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            match app.cli().matches() {
+                Ok(matches) => {
+                    // args is a HashMap<String, ArgData>
+                    if let Some(arg) = matches.args.get("debug") {
+                        if arg.occurrences > 0 {
+                            println!("Debug flag present!");
+                            let window = app.get_webview_window("main").unwrap();
+                            window.open_devtools();
+                        }
+                    }
+                }
+                Err(_) => {}
+            }
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 update(handle).await.unwrap();
