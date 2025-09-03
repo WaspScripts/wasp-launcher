@@ -10,7 +10,8 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    thread,
+    thread::{self, sleep},
+    time::Duration,
 };
 
 use git2::{Cred, Error, FetchOptions, RemoteCallbacks, Repository, StashFlags};
@@ -487,13 +488,13 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
             match app.cli().matches() {
                 Ok(matches) => {
                     // args is a HashMap<String, ArgData>
                     if let Some(arg) = matches.args.get("debug") {
                         if arg.occurrences > 0 {
                             println!("Debug flag present!");
-                            let window = app.get_webview_window("main").unwrap();
                             window.open_devtools();
                         }
                     }
@@ -553,6 +554,7 @@ pub fn run() {
                 osclient: get_path("osclient", osclient_default),
             }));
 
+            window.show().unwrap();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
