@@ -10,8 +10,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    thread::{self, sleep},
-    time::Duration,
+    thread::{self},
 };
 
 use git2::{Cred, Error, FetchOptions, RemoteCallbacks, Repository, StashFlags};
@@ -528,7 +527,11 @@ pub fn run() {
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                update(handle).await.unwrap();
+                if cfg!(dev) {
+                    update(handle).await.unwrap();
+                } else {
+                    println!("Update available!")
+                }
             });
 
             let settings = app.store("settings.json")?;
@@ -578,7 +581,7 @@ pub fn run() {
                 osclient: get_path("osclient", osclient_default),
             }));
 
-            window.show().unwrap();
+            let _ = window.set_background_color(Some([25, 25, 25].into()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

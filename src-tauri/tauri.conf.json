@@ -16,8 +16,7 @@
 				"width": 1280,
 				"height": 720,
 				"resizable": true,
-				"theme": "Dark",
-				"visible": false
+				"theme": "Dark"
 			}
 		],
 		"security": {
