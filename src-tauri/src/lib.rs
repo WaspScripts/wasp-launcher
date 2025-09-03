@@ -478,6 +478,30 @@ fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
     true
 }
 
+async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
+    if let Some(update) = app.updater()?.check().await? {
+        let mut downloaded = 0;
+
+        // alternatively we could also call update.download() and update.install() separately
+        update
+            .download_and_install(
+                |chunk_length, content_length| {
+                    downloaded += chunk_length;
+                    println!("Downloaded {downloaded} from {content_length:?}");
+                },
+                || {
+                    println!("Download finished");
+                },
+            )
+            .await?;
+
+        println!("Update installed!");
+        app.restart();
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -567,28 +591,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
-    if let Some(update) = app.updater()?.check().await? {
-        let mut downloaded = 0;
-
-        // alternatively we could also call update.download() and update.install() separately
-        update
-            .download_and_install(
-                |chunk_length, content_length| {
-                    downloaded += chunk_length;
-                    println!("Downloaded {downloaded} from {content_length:?}");
-                },
-                || {
-                    println!("Download finished");
-                },
-            )
-            .await?;
-
-        println!("Update installed!");
-        app.restart();
-    }
-
-    Ok(())
 }

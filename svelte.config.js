@@ -16,6 +16,7 @@ const config = {
 					"self",
 					"ws://localhost:*",
 					"http://localhost:*",
+					"http://ipc.localhost/*",
 					"https://waspscripts.dev",
 					"https://db.waspscripts.dev",
 					"ws://db.waspscripts.dev",
