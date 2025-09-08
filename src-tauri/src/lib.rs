@@ -291,7 +291,7 @@ fn send_html(content: &str) -> String {
          <html>\n\
            <head>\n\
              <meta charset=\"UTF-8\">\n\
-             <link rel=\"icon\" href=\"https://waspscripts.com/favicon.png\">\n\
+             <link rel=\"icon\" href=\"https://waspscripts.dev/favicon.png\">\n\
              <meta name=\"viewport\" content=\"width=device-width\">\n\
              <title>WaspScripts</title>\n\
              <meta name=\"description\" content=\"WaspScripts Simba Login page\">\n\
@@ -526,13 +526,12 @@ pub fn run() {
             }
 
             let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                if cfg!(dev) {
+            #[cfg(dev)]
+            {
+                tauri::async_runtime::spawn(async move {
                     update(handle).await.unwrap();
-                } else {
-                    println!("Update available!")
-                }
-            });
+                });
+            }
 
             let settings = app.store("settings.json")?;
 
