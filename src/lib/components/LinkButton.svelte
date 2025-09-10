@@ -16,7 +16,11 @@
 	arrow
 >
 	{#snippet trigger()}
-		<a {href} class="btn preset-filled-surface-500 [&>*]:pointer-events-none">
+		<a
+			{href}
+			class="btn preset-filled-surface-500 [&>*]:pointer-events-none"
+			data-sveltekit-preload-data="false"
+		>
 			{icon}
 		</a>
 	{/snippet}
