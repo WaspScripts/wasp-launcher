@@ -6,7 +6,7 @@ export const load = async ({ parent, depends }) => {
 	depends("executable:paths")
 	const promises = await Promise.all([
 		parent(),
-		invoke("get_executable_path", { exe: "simba" }) as Promise<string>,
+		invoke("get_executable_path", { exe: "devsimba" }) as Promise<string>,
 		invoke("get_executable_path", { exe: "runelite" }) as Promise<string>,
 		invoke("get_executable_path", { exe: "osclient" }) as Promise<string>
 	])
@@ -17,7 +17,7 @@ export const load = async ({ parent, depends }) => {
 	}
 
 	return {
-		simba: promises[1],
+		devsimba: promises[1],
 		runelite: promises[2],
 		osclient: promises[3]
 	}

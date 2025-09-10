@@ -26,6 +26,7 @@ use zip::ZipArchive;
 #[derive(Default)]
 struct ExecutablePaths {
     simba: PathBuf,
+    devsimba: PathBuf,
     runelite: PathBuf,
     osclient: PathBuf,
 }
@@ -41,6 +42,7 @@ fn set_executable_path(
     let mut paths = paths.lock().unwrap();
     match exe.as_str() {
         "simba" => paths.simba = PathBuf::from(path.clone()),
+        "devsimba" => paths.devsimba = PathBuf::from(path.clone()),
         "runelite" => paths.runelite = PathBuf::from(path.clone()),
         "osclient" => paths.osclient = PathBuf::from(path.clone()),
         _ => {}
@@ -57,6 +59,7 @@ fn get_executable_path(paths: State<'_, Mutex<ExecutablePaths>>, exe: String) ->
     let paths = paths.lock().unwrap();
     match exe.as_str() {
         "simba" => paths.simba.to_str().unwrap().to_string(),
+        "devsimba" => paths.devsimba.to_str().unwrap().to_string(),
         "runelite" => paths.runelite.to_str().unwrap().to_string(),
         "osclient" => paths.osclient.to_str().unwrap().to_string(),
         _ => paths.simba.to_str().unwrap().to_string(),
@@ -116,6 +119,10 @@ async fn ensure_wasplib_at_tag(path: PathBuf, tag: &str) -> Result<(), Box<dyn s
     if lib_path.exists() {
         println!("Removing old WaspLib folder...");
         remove_dir_all(&lib_path)?;
+    }
+
+    if tag == "latest" && zip_path.exists() {
+        let _ = remove_file(zip_path.clone());
     }
 
     // 2. Check if zip exists, otherwise download it
@@ -184,7 +191,6 @@ fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
 }
 
 async fn download_and_unzip(url: &str, dest: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    // Download ZIP to memory
     let response = Client::new()
         .get(url)
         .send()
@@ -218,32 +224,68 @@ async fn download_and_unzip(url: &str, dest: &PathBuf) -> Result<(), Box<dyn std
 }
 
 async fn run_simba(path: PathBuf, args: Vec<String>) {
+    println!("Attempt to run Simba from: {:?}", path);
+
     if args.len() != 6 {
-        panic!("Expected 3 arguments, but got {}", args.len());
+        panic!("Expected 6 arguments, but got {}", args.len());
     }
 
-    let exe_path = path.join(format!("Simba-{}.exe", args[1]));
+    const URL: &'static str =
+        "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
+
+    let mut body: Option<String> = None;
+
+    let commit = if args[1] == "latest" {
+        println!("Finding latest Simba available");
+
+        let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
+        let text = res.text().await.expect("Failed to read response text");
+        body = Some(text);
+
+        let line = body
+            .as_ref()
+            .unwrap()
+            .lines()
+            .find(|l| l.contains("| simba2000 |"))
+            .expect("Branch not found in README.md");
+
+        let parts: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
+        let commit_col = parts.get(2).expect("No commit column found");
+
+        commit_col
+            .split(']')
+            .next()
+            .and_then(|s| s.strip_prefix('['))
+            .expect("Failed to parse commit")
+            .to_string()
+    } else {
+        args[1].to_string()
+    };
+
+    let exe_path = path.join(format!("Simba-{}.exe", commit));
 
     if !exe_path.exists() {
-        println!("Downloading Simba-{}.exe", args[1]);
+        println!("Downloading Simba-{}.exe", commit);
         let zip_path = path.join("Win64.zip");
         if zip_path.exists() {
             remove_file(&zip_path).expect("Failed to delete Win64.zip");
         }
 
-        let url = "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
-        let res = reqwest::get(url).await.expect("Failed to fetch README.md");
-        let body = res.text().await.expect("Failed to read response text");
+        // only fetch if we don’t already have a body
+        if body.is_none() {
+            let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
+            body = Some(res.text().await.expect("Failed to read response text"));
+        }
 
-        let search_token = format!("[{}]", args[1]);
+        let search_token = format!("[{}]", commit);
+        let cleanbody = body.as_ref().unwrap().replace("<br>", " ");
 
-        let line = body
+        let line = cleanbody
             .lines()
             .find(|line| line.contains(&search_token))
-            .expect("Branch not found in README.md");
+            .expect("Commit not found in README.md");
 
         let mut win64_url = None;
-
         for part in line.split('[') {
             if part.starts_with("Win64](") {
                 if let Some(start) = part.find("](") {
@@ -351,6 +393,7 @@ async fn run_executable(
         let paths = paths.lock().unwrap();
         match exe.as_str() {
             "simba" => paths.simba.clone(),
+            "devsimba" => paths.devsimba.clone(),
             "runelite" => paths.runelite.clone(),
             "osclient" => paths.osclient.clone(),
             _ => paths.simba.clone(),
@@ -358,6 +401,21 @@ async fn run_executable(
     };
 
     if exe == "simba" {
+        run_simba(path, args).await;
+    } else if exe == "devsimba" {
+        let valid = {
+            let paths = paths.lock().unwrap();
+            paths.simba != paths.devsimba
+        };
+
+        if !valid {
+            let _ = ensure_simba_directories(&path);
+            let plugins_path = path.join("Plugins").join("wasp-plugins");
+            tauri::async_runtime::spawn(async move {
+                let _ = sync_plugins_repo(&plugins_path);
+            });
+        };
+
         run_simba(path, args).await;
     } else {
         Command::new(path)
@@ -526,8 +584,7 @@ pub fn run() {
             }
 
             let handle = app.handle().clone();
-            #[cfg(dev)]
-            {
+            if !tauri::is_dev() {
                 tauri::async_runtime::spawn(async move {
                     update(handle).await.unwrap();
                 });
@@ -575,7 +632,8 @@ pub fn run() {
                 .join("Jagex Launcher\\Games\\Old School RuneScape\\Client\\osclient.exe");
 
             app.manage(Mutex::new(ExecutablePaths {
-                simba: get_path("simba", simba_path),
+                simba: simba_path.clone(),
+                devsimba: get_path("devsimba", simba_path),
                 runelite: get_path("runelite", runelite_default),
                 osclient: get_path("osclient", osclient_default),
             }));
