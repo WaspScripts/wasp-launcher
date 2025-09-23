@@ -4,13 +4,13 @@
 	import Discord from "./Footer/Discord.svelte"
 	import GitHub from "./Footer/GitHub.svelte"
 	import YouTube from "./Footer/YouTube.svelte"
-	import type { Script } from "$lib/types/collection"
+	import type { ScriptEx } from "$lib/types/collection"
 	import { page } from "$app/state"
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
 
 	let data = $props()
-	let script: Script = $derived(data.script)
+	let script: ScriptEx = $derived(data.script)
 	const supabase: SupabaseClient<Database> = $derived(page.data.supabase)
 	const session: Session = $derived(page.data.session)
 
@@ -78,7 +78,7 @@
 </script>
 
 <footer
-	class="bg-surface-200/30 dark:bg-surface-800/30 sticky bottom-0 flex justify-between text-base font-semibold backdrop-blur-md"
+	class="sticky bottom-0 flex justify-between bg-surface-200/30 text-base font-semibold backdrop-blur-md dark:bg-surface-800/30"
 >
 	<div class="mx-4 my-4 flex gap-2">
 		<Tooltip
@@ -129,30 +129,53 @@
 
 	{#if script}
 		<div class="flex">
-			{#await versionsPromise}
-				<select class="select my-auto"> Loading... </select>
-			{:then versions}
-				<select class="select my-auto" bind:value={selected}>
-					{#each versions as version, idx}
-						<option value={idx}>Revision {version.revision}</option>
-					{/each}
-				</select>
-			{/await}
+			{#if script.access}
+				{#await versionsPromise}
+					<select class="my-auto select"> Loading... </select>
+				{:then versions}
+					<select class="my-auto select" bind:value={selected}>
+						{#each versions as version, idx}
+							<option value={idx}>Revision {version.revision}</option>
+						{/each}
+					</select>
+				{/await}
 
-			<Tooltip
-				open={openState}
-				onOpenChange={(e) => (openState = e.open)}
-				positioning={{ placement: "top" }}
-				triggerBase="underline"
-				contentBase="card preset-filled p-4"
-				openDelay={1000}
-				arrow
-			>
-				{#snippet trigger()}
-					<button class="btn preset-filled-primary-500 mx-4 my-4" onclick={execute}>Run</button>
-				{/snippet}
-				{#snippet content()}Open in Simba{/snippet}
-			</Tooltip>
+				<Tooltip
+					open={openState}
+					onOpenChange={(e) => (openState = e.open)}
+					positioning={{ placement: "top" }}
+					triggerBase="underline"
+					contentBase="card preset-filled p-4"
+					openDelay={1000}
+					arrow
+				>
+					{#snippet trigger()}
+						<button class="mx-4 my-4 btn preset-filled-primary-500" onclick={execute}>Run</button>
+					{/snippet}
+					{#snippet content()}Open in Simba{/snippet}
+				</Tooltip>
+			{:else}
+				<Tooltip
+					open={openState}
+					onOpenChange={(e) => (openState = e.open)}
+					positioning={{ placement: "top" }}
+					triggerBase="underline"
+					contentBase="card preset-filled p-4"
+					openDelay={1000}
+					arrow
+				>
+					{#snippet trigger()}
+						<a
+							class="mx-4 my-4 btn preset-filled-primary-500"
+							href="https://waspscripts.dev/scripts/{script.id}"
+							target="_blank"
+						>
+							Buy
+						</a>
+					{/snippet}
+					{#snippet content()}Open in Simba{/snippet}
+				</Tooltip>
+			{/if}
 		</div>
 	{/if}
 </footer>

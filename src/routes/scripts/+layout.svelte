@@ -13,17 +13,24 @@
 
 <Navigation />
 <main class="flex max-h-full justify-between overflow-y-hidden">
-	<aside class="border-surface-500 flex h-full max-w-96 min-w-64 flex-col border-r-1 p-2">
+	<aside class="flex h-full max-w-96 min-w-64 flex-col border-r-1 border-surface-500 p-2">
 		<input
 			type="text"
 			placeholder="🔍 Search script ..."
-			class="input placeholder:text-surface-400-600 text-xs"
+			class="input text-xs placeholder:text-surface-400-600"
 			bind:value={search}
 		/>
 		<ul class="my-2 h-full overflow-y-scroll">
 			{#each scripts as script}
-				<li class="hover:text-primary-500 preset-outlined-success-200-800 flex">
-					<a href={script.id} class="h-full w-full px-2">{script.title}</a>
+				<li class="flex preset-outlined-success-200-800 hover:preset-tonal">
+					<a
+						href={script.id}
+						class="h-full w-full px-2 {script.metadata.type == 'premium'
+							? script.access
+								? 'text-secondary-500'
+								: 'text-warning-500'
+							: ''}">{script.title}</a
+					>
 				</li>
 			{/each}
 		</ul>

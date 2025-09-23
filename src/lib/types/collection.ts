@@ -10,10 +10,18 @@ export interface Script {
 		revision: number
 		updated_at: number
 	}
+	metadata: {
+		status: "official" | "community"
+		type: "premium" | "free"
+	}
 	stats_limits: {
 		xp_min: number
 		xp_max: number
 		gp_min: number
 		gp_max: number
 	}
+}
+
+export type ScriptEx = Script & {
+	access: boolean
 }
