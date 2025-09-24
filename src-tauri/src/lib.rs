@@ -376,8 +376,17 @@ fn save_blob(app: tauri::AppHandle, path: String, data: Vec<u8>) -> Result<(), S
         .join("Scripts")
         .join(path);
 
-    let mut file = File::create(final_path).map_err(|e| e.to_string())?;
+    let mut file = File::create(&final_path).map_err(|e| e.to_string())?;
     file.write_all(&data).map_err(|e| e.to_string())?;
+    drop(file);
+
+    let mut perms = std::fs::metadata(&final_path)
+        .map_err(|e| e.to_string())?
+        .permissions();
+
+    perms.set_readonly(true);
+    std::fs::set_permissions(&final_path, perms).map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -403,12 +412,12 @@ async fn run_executable(
     if exe == "simba" {
         run_simba(path, args).await;
     } else if exe == "devsimba" {
-        let valid = {
+        let diff_dirs = {
             let paths = paths.lock().unwrap();
             paths.simba != paths.devsimba
         };
 
-        if !valid {
+        if diff_dirs {
             let _ = ensure_simba_directories(&path);
             let plugins_path = path.join("Plugins").join("wasp-plugins");
             tauri::async_runtime::spawn(async move {
