@@ -316,15 +316,21 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
         .to_string_lossy()
         .to_string();
 
-    let _ = Command::new(exe_path)
-        .args([script_file])
-        .env("SCRIPT_SIMBA_VERSION", &args[1])
-        .env("SCRIPT_WASPLIB_VERSION", &args[2])
+    let mut cmd = Command::new(exe_path);
+    cmd.arg(script_file)
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
-        .env("WASP_REFRESH_TOKEN", &args[5])
-        .spawn()
-        .map_err(|err| err.to_string());
+        .env("WASP_REFRESH_TOKEN", &args[5]);
+
+    if args[1] != "latest" {
+        cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
+    }
+
+    if args[2] != "latest" {
+        cmd.env("SCRIPT_WASPLIB_VERSION", &args[2]);
+    }
+
+    let _ = cmd.spawn().map_err(|err| err.to_string());
 }
 
 fn send_html(content: &str) -> String {
