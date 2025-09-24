@@ -20,7 +20,8 @@ const config = {
 					"https://waspscripts.dev",
 					"https://db.waspscripts.dev",
 					"ws://db.waspscripts.dev",
-					"wss://db.waspscripts.dev"
+					"wss://db.waspscripts.dev",
+					"http://ipc.localhost/plugin%3Astore%7Cload"
 				]
 			}
 		}

@@ -16,6 +16,16 @@ export const supabase = createClient<Database>(
 	}
 )
 
+export async function refreshSession() {
+	console.log("Refreshing session")
+	const { data, error } = await supabase.auth.refreshSession()
+	if (error) {
+		console.error(error)
+		return
+	}
+	console.log("Session refreshed!", data)
+}
+
 export async function getSession() {
 	const {
 		data: { session }
