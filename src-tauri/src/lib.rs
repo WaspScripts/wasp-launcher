@@ -382,6 +382,10 @@ fn save_blob(app: tauri::AppHandle, path: String, data: Vec<u8>) -> Result<(), S
         .join("Scripts")
         .join(path);
 
+    if final_path.exists() {
+        std::fs::remove_file(&final_path).map_err(|e| e.to_string())?;
+    }
+
     let mut file = File::create(&final_path).map_err(|e| e.to_string())?;
     file.write_all(&data).map_err(|e| e.to_string())?;
     drop(file);
