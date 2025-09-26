@@ -9,14 +9,21 @@
 
 	const session: Session = $derived(page.data.session)
 
-	const args = $derived(["", "latest", "latest", "", "", session.refresh_token])
+	const args = $derived([
+		"",
+		"latest",
+		"latest",
+		"",
+		"",
+		session.access_token,
+		session.refresh_token
+	])
 
 	let settingsBtn = $derived(page.url.pathname == "/settings" ? "/scripts" : "/settings")
 
 	async function execute() {
 		const res = await invoke("run_executable", { exe: "devsimba", args })
 		console.log(res)
-		await refreshSession()
 	}
 	let openState = $state(false)
 </script>

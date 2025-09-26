@@ -8,7 +8,6 @@
 	import { page } from "$app/state"
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
-	import { refreshSession } from "$lib/supabase"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -71,10 +70,10 @@
 			version.wasplib,
 			script.id,
 			script.protected.revision.toString(),
+			session.access_token,
 			session.refresh_token
 		]
 		await invoke("run_executable", { exe, args })
-		await refreshSession()
 	}
 	let openState = $state(false)
 </script>
