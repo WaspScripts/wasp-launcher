@@ -117,8 +117,7 @@ export async function getScripts() {
 		.select(
 			`id, url, title, description, content,
 			protected!left (username, avatar, revision, updated_at),
-			metadata!left (status, type),
-			stats_limits!left (xp_min, xp_max, gp_min, gp_max)`
+			metadata!left (status, type)`
 		)
 		.eq("published", true)
 		.order("title")

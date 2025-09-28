@@ -1,4 +1,4 @@
-import type { Script } from "./types/collection"
+import type { Script, StatsLimits } from "./types/collection"
 
 export function formatNumber(n: number): string {
 	let i = 0
@@ -10,10 +10,14 @@ export function formatNumber(n: number): string {
 		f = f / 1000
 	}
 
-	return parseFloat(f.toFixed(2)).toString() + " " + arr[i]
+	return parseFloat(f.toFixed(2)).toString() + arr[i]
 }
 
-export function replaceScriptContent(script: Script, locale: string = "pt-PT") {
+export function replaceScriptContent(
+	script: Script,
+	limits: StatsLimits,
+	locale: string = "pt-PT"
+) {
 	const date: Intl.DateTimeFormatOptions = {
 		day: "2-digit",
 		month: "2-digit",
@@ -36,10 +40,10 @@ export function replaceScriptContent(script: Script, locale: string = "pt-PT") {
 		updated_at: new Date(script.protected.updated_at).toLocaleString(locale),
 		revision_date: new Date(script.protected.updated_at).toLocaleString(locale, date),
 		revision_time: new Date(script.protected.updated_at).toLocaleString(locale, time),
-		min_xp: formatNumber(Number(script.stats_limits.xp_min * 12)),
-		max_xp: formatNumber(Number(script.stats_limits.xp_max * 12)),
-		min_gp: formatNumber(Number(script.stats_limits.gp_min * 12)),
-		max_gp: formatNumber(Number(script.stats_limits.gp_max * 12))
+		min_xp: formatNumber(Number(limits.xp_min * 12)),
+		max_xp: formatNumber(Number(limits.xp_max * 12)),
+		min_gp: formatNumber(Number(limits.gp_min * 12)),
+		max_gp: formatNumber(Number(limits.gp_max * 12))
 	}
 
 	const result = script.content.replace(/\{\$([^{}\s$]+)\}/g, (match, placeholder) => {
