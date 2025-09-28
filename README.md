@@ -8,6 +8,12 @@ Start dev environment:
 pnpm tauri dev
 ```
 
+Update types (needs auth):
+
+```cmd
+pnpm gentypes
+```
+
 Build tauri app:
 
 ```cmd
