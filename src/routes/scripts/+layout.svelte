@@ -16,7 +16,7 @@
 	<aside class="flex h-full max-w-96 min-w-64 flex-col border-r-1 border-surface-500 p-2">
 		<input
 			type="text"
-			placeholder="🔍 Search script ..."
+			placeholder="🔍 Search script..."
 			class="input text-xs placeholder:text-surface-400-600"
 			bind:value={search}
 		/>
