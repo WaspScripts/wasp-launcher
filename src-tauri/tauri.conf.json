@@ -20,20 +20,7 @@
 			}
 		],
 		"security": {
-			"csp": {
-				"connect-src": [
-					"self",
-					"http://tauri.localhost",
-					"ipc: http://ipc.localhost",
-					"local: http://localhost:*/session",
-					"website: https://waspscripts.dev",
-					"database: https://db.waspscripts.dev",
-					"api: https://api.waspscripts.dev",
-					"ws://localhost:*",
-					"ws://db.waspscripts.dev",
-					"wss://db.waspscripts.dev"
-				]
-			}
+			"csp": null
 		}
 	},
 	"bundle": {
