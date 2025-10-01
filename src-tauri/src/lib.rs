@@ -226,8 +226,8 @@ async fn download_and_unzip(url: &str, dest: &PathBuf) -> Result<(), Box<dyn std
 async fn run_simba(path: PathBuf, args: Vec<String>) {
     println!("Attempt to run Simba from: {:?}", path);
 
-    if args.len() != 7 {
-        panic!("Expected 7 arguments, but got {}", args.len());
+    if args.len() != 6 {
+        panic!("Expected 6 arguments, but got {}", args.len());
     }
 
     const URL: &'static str =
@@ -320,8 +320,7 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
     cmd.arg(script_file)
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
-        .env("WASP_ACCESS_TOKEN", &args[5])
-        .env("WASP_REFRESH_TOKEN", &args[6]);
+        .env("WASP_REFRESH_TOKEN", &args[5]);
 
     if args[1] != "latest" {
         cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
@@ -582,6 +581,7 @@ async fn update(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())

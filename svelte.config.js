@@ -14,14 +14,14 @@ const config = {
 			directives: {
 				"connect-src": [
 					"self",
-					"ws://localhost:*",
 					"http://localhost:*",
-					"http://ipc.localhost/*",
+					"http://ipc.localhost",
 					"https://waspscripts.dev",
 					"https://db.waspscripts.dev",
+					"https://api.waspscripts.dev",
+					"ws://localhost:*",
 					"ws://db.waspscripts.dev",
-					"wss://db.waspscripts.dev",
-					"http://ipc.localhost/plugin%3Astore%7Cload"
+					"wss://db.waspscripts.dev"
 				]
 			}
 		}

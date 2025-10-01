@@ -2,28 +2,34 @@
 	import { page } from "$app/state"
 	import ExecuteButton from "$lib/components/ExecuteButton.svelte"
 	import LinkButton from "$lib/components/LinkButton.svelte"
-	import { refreshSession } from "$lib/supabase"
 	import { Tooltip } from "@skeletonlabs/skeleton-svelte"
 	import type { Session } from "@supabase/supabase-js"
 	import { invoke } from "@tauri-apps/api/core"
+	import { fetch } from "@tauri-apps/plugin-http"
 
 	const session: Session = $derived(page.data.session)
 
-	const args = $derived([
-		"",
-		"latest",
-		"latest",
-		"",
-		"",
-		session.access_token,
-		session.refresh_token
-	])
+	let args = $derived(["", "latest", "latest", "", "", ""])
 
 	let settingsBtn = $derived(page.url.pathname == "/settings" ? "/scripts" : "/settings")
 
 	async function execute() {
+		try {
+			const response = await fetch("https://api.waspscripts.dev/session", {
+				method: "GET",
+				headers: {
+					Authorization: "Bearer " + session.access_token,
+					RefreshToken: session.refresh_token,
+					"Content-Type": "application/json"
+				}
+			})
+			const data = await response.json()
+			args[5] = data.refresh_token
+		} catch (err) {
+			console.error(err)
+		}
+
 		const res = await invoke("run_executable", { exe: "devsimba", args })
-		console.log(res)
 	}
 	let openState = $state(false)
 </script>

@@ -8,6 +8,7 @@
 	import { page } from "$app/state"
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
+	import { fetch } from "@tauri-apps/plugin-http"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -60,6 +61,23 @@
 			return
 		}
 
+		let refreshToken = ""
+
+		try {
+			const response = await fetch("https://api.waspscripts.dev/session", {
+				method: "GET",
+				headers: {
+					Authorization: "Bearer " + session.access_token,
+					RefreshToken: session.refresh_token,
+					"Content-Type": "application/json"
+				}
+			})
+			const data = await response.json()
+			refreshToken = data.refresh_token
+		} catch (err) {
+			console.error(err)
+		}
+
 		const file = script.url + "-rev-" + version.revision + ".simba"
 		await saveBlobToFile(data, file)
 
@@ -70,9 +88,9 @@
 			version.wasplib,
 			script.id,
 			script.protected.revision.toString(),
-			session.access_token,
-			session.refresh_token
+			refreshToken
 		]
+
 		await invoke("run_executable", { exe, args })
 	}
 	let openState = $state(false)

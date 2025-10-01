@@ -2,8 +2,10 @@ import type { Script } from "./types/collection"
 import type { Database } from "./types/supabase"
 import { createClient, type User } from "@supabase/supabase-js"
 
+export const DATABASE_URL = "https://db.waspscripts.dev/"
+
 export const supabase = createClient<Database>(
-	"https://db.waspscripts.dev",
+	DATABASE_URL,
 	"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc1MTA0MTIwMCwiZXhwIjo0OTA2NzE0ODAwLCJyb2xlIjoiYW5vbiJ9.C_KW5x45BpIyOQrnZc7CKYKjHe0yxB4l-fTSC4z_kYY",
 	{
 		auth: {

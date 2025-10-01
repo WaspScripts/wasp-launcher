@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { mardownRenderer } from "$lib/markdown"
+	import { DATABASE_URL } from "$lib/supabase"
 	import { replaceScriptContent } from "$lib/utils"
 	import ScriptHeader from "./ScriptHeader.svelte"
 	let { data } = $props()
@@ -39,9 +40,7 @@
 >
 	<img
 		class="rounded-md"
-		src={"https://db.waspscripts.dev/storage/v1/object/public/imgs/scripts/" +
-			script.id +
-			"/banner.jpg"}
+		src={DATABASE_URL + "storage/v1/object/public/imgs/scripts/" + script.id + "/banner.jpg"}
 		alt="Script banner"
 		loading="lazy"
 	/>
