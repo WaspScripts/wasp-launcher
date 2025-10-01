@@ -14,7 +14,7 @@ const config = {
 			directives: {
 				"connect-src": [
 					"self",
-					"http://tauri.localhost"
+					"http://tauri.localhost",
 					"http://localhost:*",
 					"http://ipc.localhost",
 					"https://waspscripts.dev",
