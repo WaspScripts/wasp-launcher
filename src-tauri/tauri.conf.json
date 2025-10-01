@@ -23,6 +23,7 @@
 			"csp": {
 				"connect-src": [
 					"self",
+					"http://tauri.localhost",
 					"ipc: http://ipc.localhost",
 					"local: http://localhost:*/session",
 					"website: https://waspscripts.dev",
