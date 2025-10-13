@@ -333,6 +333,56 @@ async fn run_simba(path: PathBuf, args: Vec<String>) {
     let _ = cmd.spawn().map_err(|err| err.to_string());
 }
 
+#[tauri::command]
+fn delete_cache(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+    let path = {
+        let paths = paths.lock().unwrap();
+        paths.simba.clone()
+    };
+    let cache_path = path.join("Data/Cache");
+
+    if cache_path.exists() {
+        remove_dir_all(&cache_path).expect("Failed to delete cache path.");
+        println!("Deleted folder: {:?}", cache_path);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_assets(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+    let path = {
+        let paths = paths.lock().unwrap();
+        paths.simba.clone()
+    };
+
+    let assets_path = path.join("Data/Assets");
+
+    if assets_path.exists() {
+        remove_dir_all(&assets_path).expect("Failed to delete assets path.");
+        println!("Deleted folder: {:?}", assets_path);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_configs(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+    let path = {
+        let paths = paths.lock().unwrap();
+        paths.simba.clone()
+    };
+
+    let assets_path = path.join("Configs");
+
+    if assets_path.exists() {
+        remove_dir_all(&assets_path).expect("Failed to delete configs path.");
+        println!("Deleted folder: {:?}", assets_path);
+    }
+
+    Ok(())
+}
+
 fn send_html(content: &str) -> String {
     let html = format!(
         "<!DOCTYPE html>\n\
@@ -667,7 +717,10 @@ pub fn run() {
             run_executable,
             start_server,
             sign_up,
-            save_blob
+            save_blob,
+            delete_cache,
+            delete_assets,
+            delete_configs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -5,7 +5,6 @@
 
 	let { data, children } = $props()
 	const scripts = $derived(data.scripts!)
-
 	let search = $state("")
 
 	$inspect(data.script)

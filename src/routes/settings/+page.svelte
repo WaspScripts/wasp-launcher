@@ -30,6 +30,27 @@
 		await invoke("set_executable_path", { exe, path })
 		await invalidate("executable:paths")
 	}
+
+	let deletingAssets = $state(false)
+	async function clearAssets() {
+		deletingAssets = true
+		await invoke("delete_assets")
+		deletingAssets = false
+	}
+
+	let deletingCache = $state(false)
+	async function clearCache() {
+		deletingCache = true
+		await invoke("delete_cache")
+		deletingCache = false
+	}
+
+	let deletingConfigs = $state(false)
+	async function clearConfigs() {
+		deletingConfigs = true
+		await invoke("delete_configs")
+		deletingConfigs = false
+	}
 </script>
 
 <main class="flex flex-col">
@@ -42,8 +63,8 @@
 		<ArrowBigLeft />
 	</a>
 
-	<div class="flex">
-		<div class="m-12 space-y-8 rounded-md preset-outlined-surface-300-700 p-12">
+	<div class="flex gap-2">
+		<div class="m-4 space-y-8 rounded-md preset-outlined-surface-300-700 p-12">
 			<header>
 				<h1 class="text-xl font-bold">OSRS Clients:</h1>
 			</header>
@@ -67,7 +88,7 @@
 			</label>
 		</div>
 
-		<div class="m-12 space-y-8 rounded-md preset-outlined-surface-300-700 p-12">
+		<div class="m-4 space-y-8 rounded-md preset-outlined-surface-300-700 p-12">
 			<header>
 				<h1 class="text-xl font-bold">Development Environment:</h1>
 			</header>
@@ -90,7 +111,34 @@
 		</div>
 	</div>
 
-	<span class="w-full text-center font-bold text-surface-800-200">
+	<div class="mx-auto my-4 flex gap-2">
+		<button
+			class="btn bg-secondary-500"
+			class:disabled={deletingCache}
+			disabled={deletingCache}
+			onclick={async () => await clearCache()}
+		>
+			Clear Cache
+		</button>
+		<button
+			class="btn bg-secondary-500"
+			class:disabled={deletingAssets}
+			disabled={deletingAssets}
+			onclick={async () => await clearAssets()}
+		>
+			Clear Assets
+		</button>
+		<button
+			class="btn bg-secondary-500"
+			class:disabled={deletingConfigs}
+			disabled={deletingConfigs}
+			onclick={async () => await clearConfigs()}
+		>
+			Clear Configs
+		</button>
+	</div>
+
+	<span class="my-4 w-full text-center font-bold text-surface-800-200">
 		wasp-launcher v{#await getVersion()} Loading...{:then version}{version}{/await}</span
 	>
 </main>
