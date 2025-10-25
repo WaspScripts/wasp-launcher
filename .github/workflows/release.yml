@@ -65,7 +65,9 @@ jobs:
         run: |
           BODY=$(jq -nc \
             --arg title "WaspLauncher Updated" \
-            --arg desc "${{ github.event.workflow_run.head_commit.message }}" \
+            --arg desc "${{ github.event.workflow_run.head_commit.message }}
+
+            Download: https://github.com/WaspScripts/wasp-launcher/releases/latest" \
             --arg url  "https://github.com/WaspScripts/wasp-launcher/commit/${{ github.event.workflow_run.head_commit.id }}" \
             --arg foot "Author: ${{ github.event.workflow_run.head_commit.author.name }}" \
             --argjson color 16742912 \
