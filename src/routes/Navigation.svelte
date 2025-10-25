@@ -81,7 +81,7 @@
 		<button
 			name="Logout"
 			aria-label="Logout"
-			class="mx-auto btn preset-filled-secondary-500"
+			class="mx-auto btn preset-filled-primary-500"
 			onclick={async () => await logout()}
 		>
 			<LogOut />

@@ -4,6 +4,7 @@
 	import { getVersion } from "@tauri-apps/api/app"
 	import { invoke } from "@tauri-apps/api/core"
 	import { open } from "@tauri-apps/plugin-dialog"
+	import { Modal } from "@skeletonlabs/skeleton-svelte"
 
 	let { data } = $props()
 
@@ -51,6 +52,21 @@
 		await invoke("delete_configs")
 		deletingConfigs = false
 	}
+
+	let reinstallingPlugins = $state(false)
+
+	let modalOpenState = $state(false)
+
+	function modalClose() {
+		modalOpenState = false
+	}
+
+	async function reinstallPlugins() {
+		modalOpenState = false
+		reinstallingPlugins = true
+		await invoke("reinstall_plugins")
+		reinstallingPlugins = false
+	}
 </script>
 
 <main class="flex flex-col">
@@ -72,7 +88,7 @@
 			<label class="label-text">
 				RuneLite path:
 				<input
-					class="input w-96 preset-filled-surface-200-800"
+					class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
 					value={data.runelite}
 					onclick={async () => await getFile("runelite", data.runelite!)}
 				/>
@@ -81,7 +97,7 @@
 			<label class="label-text">
 				OSClient path:
 				<input
-					class="input w-96 preset-filled-surface-200-800"
+					class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
 					value={data.osclient}
 					onclick={async () => await getFile("osclient", data.osclient!)}
 				/>
@@ -103,7 +119,7 @@
 			<label class="label-text">
 				Dev environment:
 				<input
-					class="input w-96 preset-filled-surface-200-800"
+					class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
 					value={data.devsimba}
 					onclick={async () => await getPath("devsimba", data.devsimba!)}
 				/>
@@ -113,7 +129,7 @@
 
 	<div class="mx-auto my-4 flex gap-2">
 		<button
-			class="btn bg-secondary-500"
+			class="btn preset-filled-primary-500 font-bold"
 			class:disabled={deletingCache}
 			disabled={deletingCache}
 			onclick={async () => await clearCache()}
@@ -121,7 +137,7 @@
 			Clear Cache
 		</button>
 		<button
-			class="btn bg-secondary-500"
+			class="btn preset-filled-primary-500 font-bold"
 			class:disabled={deletingAssets}
 			disabled={deletingAssets}
 			onclick={async () => await clearAssets()}
@@ -129,16 +145,56 @@
 			Clear Assets
 		</button>
 		<button
-			class="btn bg-secondary-500"
+			class="btn preset-filled-primary-500 font-bold"
 			class:disabled={deletingConfigs}
 			disabled={deletingConfigs}
 			onclick={async () => await clearConfigs()}
 		>
 			Clear Configs
 		</button>
+
+		<Modal
+			open={modalOpenState}
+			onOpenChange={(e) => (modalOpenState = e.open)}
+			triggerBase=""
+			contentBase="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm"
+			backdropClasses="backdrop-blur-sm"
+		>
+			{#snippet trigger()}
+				<button
+					class="btn preset-filled-primary-500 font-bold"
+					class:disabled={reinstallingPlugins}
+					disabled={reinstallingPlugins}
+				>
+					Reinstall plugins
+				</button>
+			{/snippet}
+			{#snippet content()}
+				<header class="flex justify-between">
+					<h2 class="h2">Reinstall Plugins</h2>
+				</header>
+				<article class="my-16 space-y-8">
+					<p>Please make sure you are not running any client you've used waspscripts on.</p>
+					<p>
+						If you are not sure close all clients you have open, check the task manager to be sure
+						none is running in the background.
+					</p>
+				</article>
+				<footer class="flex justify-end gap-4">
+					<button type="button" class="btn preset-tonal" onclick={modalClose}>Cancel</button>
+					<button type="button" class="btn preset-filled" onclick={reinstallPlugins}>Confirm</button
+					>
+				</footer>
+			{/snippet}
+		</Modal>
 	</div>
 
-	<span class="my-4 w-full text-center font-bold text-surface-800-200">
-		wasp-launcher v{#await getVersion()} Loading...{:then version}{version}{/await}</span
-	>
+	<div class="my-4 w-full space-x-8 text-center font-bold text-surface-800-200">
+		<span>
+			wasp-launcher v{#await getVersion()} Loading...{:then version}{version}{/await}
+		</span>
+		<span>
+			wasp-plugins v{#await data.pluginVersions} Loading...{:then version}{version}{/await}
+		</span>
+	</div>
 </main>

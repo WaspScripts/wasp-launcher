@@ -1,6 +1,7 @@
 import { load as storeLoad } from "@tauri-apps/plugin-store"
 import { getProfile, getSession, getUser, supabase } from "$lib/supabase"
 import { error } from "@sveltejs/kit"
+import { invoke } from "@tauri-apps/api/core"
 export const prerender = true
 export const ssr = false
 
@@ -14,7 +15,8 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	const promises = await Promise.all([
 		getSession(),
 		storeLoad("settings.json", { autoSave: true }),
-		getProfile(getUser())
+		getProfile(getUser()),
+		invoke("get_executable_path", { exe: "simba" }) as Promise<string>
 	])
 
 	const settings = promises[1]
@@ -24,6 +26,7 @@ export const load = async ({ depends, url: { searchParams } }) => {
 		supabase,
 		session: promises[0],
 		profile: promises[2],
+		simbaPath: promises[3],
 		settings,
 		dark: (themeSettings[0] as boolean) ?? true,
 		theme: (themeSettings[1] as string) ?? "wasp"

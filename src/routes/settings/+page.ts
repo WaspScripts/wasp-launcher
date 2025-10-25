@@ -19,6 +19,7 @@ export const load = async ({ parent, depends }) => {
 	return {
 		devsimba: promises[1],
 		runelite: promises[2],
-		osclient: promises[3]
+		osclient: promises[3],
+		pluginVersions: invoke("get_plugin_version", {}) as Promise<string>
 	}
 }

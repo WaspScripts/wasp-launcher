@@ -16,7 +16,7 @@
 		<input
 			type="text"
 			placeholder="🔍 Search script..."
-			class="input text-xs placeholder:text-surface-400-600"
+			class="input text-xs outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
 			bind:value={search}
 		/>
 		<ul class="my-2 h-full overflow-y-scroll">
@@ -26,7 +26,7 @@
 						href={script.id}
 						class="h-full w-full px-2 {script.metadata.type == 'premium'
 							? script.access
-								? 'text-secondary-500'
+								? 'text-primary-500'
 								: 'text-warning-500'
 							: ''}">{script.title}</a
 					>
