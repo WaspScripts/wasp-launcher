@@ -1,5 +1,5 @@
 use std::{
-    fs::{remove_dir_all, File},
+    fs::{create_dir_all, metadata, remove_dir_all, remove_file, set_permissions, File},
     io::Write,
     net::TcpListener,
     path::PathBuf,
@@ -107,29 +107,41 @@ pub fn delete_configs(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result
 }
 
 #[tauri::command]
-pub fn save_blob(app: tauri::AppHandle, path: String, data: Vec<u8>) -> Result<(), String> {
-    let final_path = app
+pub fn save_blob(
+    app: tauri::AppHandle,
+    path: String,
+    filename: String,
+    data: Vec<u8>,
+) -> Result<(), String> {
+    let file_path = app
         .path()
         .app_local_data_dir()
         .expect("App Local Data Dir doesn't exist on this system")
         .join("Simba")
         .join("Scripts")
-        .join(path);
+        .join(path)
+        .join(filename);
 
-    if final_path.exists() {
-        std::fs::remove_file(&final_path).map_err(|e| e.to_string())?;
+    if let Some(parent) = file_path.parent() {
+        create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    let mut file = File::create(&final_path).map_err(|e| e.to_string())?;
+    if file_path.exists() {
+        remove_file(&file_path).map_err(|e| e.to_string())?;
+    }
+
+    println!("File path: {:?}", file_path);
+
+    let mut file = File::create(&file_path).map_err(|e| e.to_string())?;
     file.write_all(&data).map_err(|e| e.to_string())?;
     drop(file);
 
-    let mut perms = std::fs::metadata(&final_path)
+    let mut perms = metadata(&file_path)
         .map_err(|e| e.to_string())?
         .permissions();
 
     perms.set_readonly(true);
-    std::fs::set_permissions(&final_path, perms).map_err(|e| e.to_string())?;
+    set_permissions(&file_path, perms).map_err(|e| e.to_string())?;
 
     Ok(())
 }

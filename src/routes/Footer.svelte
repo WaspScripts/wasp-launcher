@@ -21,21 +21,18 @@
 		return s
 	}
 
-	async function saveBlobToFile(blob: Blob, path: string) {
+	async function saveBlobToFile(blob: Blob, path: string, filename: string) {
 		const arrayBuffer = await blob.arrayBuffer()
-		const bytes = Array.from(new Uint8Array(arrayBuffer))
+		const data = Array.from(new Uint8Array(arrayBuffer))
 
-		await invoke("save_blob", {
-			path,
-			data: bytes
-		})
+		await invoke("save_blob", { path, filename, data })
 	}
 
 	async function getVersions(id: string) {
 		const { data, error: err } = await supabase
 			.schema("scripts")
 			.from("versions")
-			.select("revision, simba, wasplib")
+			.select("revision, simba, wasplib, files")
 			.eq("id", id)
 			.order("revision", { ascending: false })
 
@@ -49,20 +46,8 @@
 	const versionsPromise = $derived(getVersions(script.id))
 	let selected = $state(0)
 
-	async function execute() {
-		const versions = await versionsPromise
-		const version = versions[selected]
-
-		const { data, error: err } = await supabase.storage
-			.from("scripts")
-			.download(script.id + "/" + pad(version.revision, 9) + "/script.simba")
-		if (err) {
-			console.error(err)
-			return
-		}
-
-		let refreshToken = ""
-
+	async function getNewSessionToken() {
+		let result = ""
 		try {
 			const response = await fetch("https://api.waspscripts.dev/session", {
 				method: "GET",
@@ -73,17 +58,45 @@
 				}
 			})
 			const data = await response.json()
-			refreshToken = data.refresh_token
+			result = data.refresh_token
 		} catch (err) {
 			console.error(err)
 		}
+		return result
+	}
 
-		const file = script.url + "-rev-" + version.revision + ".simba"
-		await saveBlobToFile(data, file)
+	async function execute() {
+		const versions = await versionsPromise
+		const version = versions[selected]
+
+		let promises = []
+		promises.push(getNewSessionToken())
+
+		const scriptName = script.url + "-rev-" + version.revision
+		const mainFile = scriptName + "/" + scriptName + ".simba"
+
+		for (let i = 0; i < version.files.length; i++) {
+			const filepath = script.id + "/" + pad(version.revision, 9) + "/" + version.files[i]
+			console.log("Downloading file:", filepath)
+			const { data, error: err } = await supabase.storage.from("scripts").download(filepath)
+
+			if (err) {
+				console.error(err)
+				return
+			}
+
+			const file = version.files[i] == "script.simba" ? scriptName + ".simba" : version.files[i]
+			promises.push(saveBlobToFile(data, scriptName, file))
+		}
+
+		const awaitedPromises = await Promise.all(promises)
+
+		let refreshToken = awaitedPromises[0] as string
+		console.log(refreshToken)
 
 		const exe = "simba"
 		const args = [
-			file,
+			mainFile,
 			version.simba,
 			version.wasplib,
 			script.id,

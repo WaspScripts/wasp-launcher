@@ -1,10 +1,9 @@
-import { DATABASE_URL } from "$lib/supabase"
 import { unlink } from "fs/promises"
 import { writeFile } from "fs/promises"
 import { join } from "path"
 
 const url =
-	DATABASE_URL + "api/v1/projects/default/types/typescript?included_schemas=public%2C%20storage"
+	"https://db.waspscripts.dev/api/v1/projects/default/types/typescript?included_schemas=public%2C%20storage"
 const outputPath = join(__dirname, "supabase.ts")
 
 console.log(outputPath)
