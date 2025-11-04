@@ -49,11 +49,11 @@
 	async function getNewSessionToken() {
 		let result = ""
 		try {
-			const response = await fetch("https://api.waspscripts.dev/session", {
+			const response = await fetch("http://localhost:3000/session", {
 				method: "GET",
 				headers: {
-					Authorization: "Bearer " + session.access_token,
-					RefreshToken: session.refresh_token,
+					authorization: "Bearer " + session.access_token,
+					refreshtoken: session.refresh_token,
 					"Content-Type": "application/json"
 				}
 			})
@@ -62,6 +62,7 @@
 		} catch (err) {
 			console.error(err)
 		}
+
 		return result
 	}
 
