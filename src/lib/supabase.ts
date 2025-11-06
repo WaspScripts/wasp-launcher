@@ -1,4 +1,4 @@
-import type { Script } from "./types/collection"
+import type { Role, Script } from "./types/collection"
 import type { Database } from "./types/supabase"
 import { createClient, type User } from "@supabase/supabase-js"
 
@@ -112,18 +112,21 @@ export async function getProducts() {
 	return data
 }
 
-export async function getScripts() {
-	const { data, error: err } = await supabase
+export async function getScripts(role: Role) {
+	let query = supabase
 		.schema("scripts")
 		.from("scripts")
 		.select(
-			`id, url, title, description, content,
+			`id, url, title, description, content, published,
 			protected!left (username, avatar, revision, updated_at),
 			metadata!left (status, type)`
 		)
-		.eq("published", true)
-		.order("title")
-		.overrideTypes<Script[]>()
+
+	if (role != "tester" && role != "scripter" && role != "moderator" && role != "administrator") {
+		query = query.eq("published", true)
+	}
+
+	const { data, error: err } = await query.order("title").overrideTypes<Script[]>()
 
 	if (err) {
 		console.error(err)
@@ -139,7 +142,7 @@ export async function getData(profile: Exclude<Awaited<ReturnType<typeof getProf
 		getFreeAccess(profile.id),
 		getProducts(),
 		getBundles(),
-		getScripts()
+		getScripts(profile.role)
 	])
 
 	const access = [...promises[0], ...promises[1]]

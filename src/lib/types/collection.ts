@@ -1,9 +1,12 @@
+export type Role = "premium" | "vip" | "tester" | "scripter" | "moderator" | "administrator" | null
+
 export interface Script {
 	id: string
 	url: string
 	title: string
 	description: string
 	content: string
+	published: boolean
 	protected: {
 		username: string
 		avatar: string

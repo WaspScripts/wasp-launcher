@@ -46,9 +46,13 @@
 	/>
 </ScriptHeader>
 
-<div
-	class="mx-2 mt-4 mb-2 flex h-full min-h-72 overflow-y-scroll rounded-md preset-outlined-surface-500"
->
+{#if !script.published}
+	<span class="text-center text-warning-500">
+		This script is not published and not visible for everyone!
+	</span>
+{/if}
+
+<div class="mx-2 mt-4 mb-2 flex h-full overflow-y-scroll rounded-md preset-outlined-surface-500">
 	<article class="m-4 prose dark:prose-invert">
 		{@html mardownRenderer.render(content)}
 	</article>

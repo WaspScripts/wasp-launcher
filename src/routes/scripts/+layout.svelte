@@ -10,8 +10,12 @@
 
 	$inspect(data.script)
 
-	function getStyle(id: string, access: boolean, type: string) {
+	function getStyle(id: string, access: boolean, type: string, published: boolean) {
 		if (page.url.pathname == "/scripts/" + id) return "text-primary-950-50"
+		if (!published) {
+			return "text-success-500"
+		}
+
 		if (type == "premium") {
 			if (access) return "text-primary-500 dark:text-primary-500"
 			return "text-warning-500"
@@ -20,7 +24,7 @@
 </script>
 
 <Navigation />
-<main class="flex max-h-full justify-between overflow-y-hidden">
+<main class="flex h-full max-h-full justify-between overflow-y-hidden">
 	<aside class="flex h-full max-w-96 min-w-64 flex-col border-r border-surface-500 p-2">
 		<input
 			type="text"
@@ -33,7 +37,12 @@
 				<li class="flex preset-outlined-success-200-800 hover:preset-tonal">
 					<a
 						href={script.id}
-						class="h-full w-full px-2 {getStyle(script.id, script.access, script.metadata.type)}"
+						class="h-full w-full px-2 {getStyle(
+							script.id,
+							script.access,
+							script.metadata.type,
+							script.published
+						)}"
 					>
 						{script.title}
 					</a>
