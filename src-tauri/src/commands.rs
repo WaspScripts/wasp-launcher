@@ -18,18 +18,75 @@ use tauri_plugin_store::StoreExt;
 
 use crate::{
     server::handle_client, simba::ensure_simba_directories, simba::read_plugins_version,
-    simba::run_simba, simba::sync_plugins_repo, ExecutablePaths,
+    simba::run_simba, simba::sync_plugins_repo, LauncherVariables,
 };
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
+pub fn get_dev_mode(launcher_vars: State<'_, Mutex<LauncherVariables>>) -> bool {
+    let launcher_vars = launcher_vars.lock().unwrap();
+    launcher_vars.devmode
+}
+
+#[tauri::command]
+pub fn set_dev_mode(
+    app: tauri::AppHandle,
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    state: bool,
+) {
+    let mut launcher_vars = launcher_vars.lock().unwrap();
+    launcher_vars.devmode = state;
+
+    let store = app
+        .store("settings.json")
+        .expect("Failed to retrieve settings.json store!");
+    store.set("devmode", state);
+}
+
+#[tauri::command]
+pub fn get_dev_updates(launcher_vars: State<'_, Mutex<LauncherVariables>>) -> bool {
+    let launcher_vars = launcher_vars.lock().unwrap();
+    launcher_vars.dev_updates
+}
+
+#[tauri::command]
+pub fn set_dev_updates(
+    app: tauri::AppHandle,
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    state: bool,
+) {
+    let mut launcher_vars = launcher_vars.lock().unwrap();
+    launcher_vars.dev_updates = state;
+
+    let store = app
+        .store("settings.json")
+        .expect("Failed to retrieve settings.json store!");
+    store.set("dev_updates", state);
+}
+
+#[tauri::command]
+pub fn get_executable_path(
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    exe: String,
+) -> String {
+    let paths = launcher_vars.lock().unwrap();
+    match exe.as_str() {
+        "simba" => paths.simba.to_str().unwrap().to_string(),
+        "devsimba" => paths.devsimba.to_str().unwrap().to_string(),
+        "runelite" => paths.runelite.to_str().unwrap().to_string(),
+        "osclient" => paths.osclient.to_str().unwrap().to_string(),
+        _ => paths.simba.to_str().unwrap().to_string(),
+    }
+}
+
+#[tauri::command]
 pub fn set_executable_path(
     app: tauri::AppHandle,
-    paths: State<'_, Mutex<ExecutablePaths>>,
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
     path: String,
 ) {
-    let mut paths = paths.lock().unwrap();
+    let mut paths = launcher_vars.lock().unwrap();
     match exe.as_str() {
         "simba" => paths.simba = PathBuf::from(path.clone()),
         "devsimba" => paths.devsimba = PathBuf::from(path.clone()),
@@ -45,24 +102,19 @@ pub fn set_executable_path(
 }
 
 #[tauri::command]
-pub fn get_executable_path(paths: State<'_, Mutex<ExecutablePaths>>, exe: String) -> String {
-    let paths = paths.lock().unwrap();
-    match exe.as_str() {
-        "simba" => paths.simba.to_str().unwrap().to_string(),
-        "devsimba" => paths.devsimba.to_str().unwrap().to_string(),
-        "runelite" => paths.runelite.to_str().unwrap().to_string(),
-        "osclient" => paths.osclient.to_str().unwrap().to_string(),
-        _ => paths.simba.to_str().unwrap().to_string(),
-    }
-}
-
-#[tauri::command]
-pub fn delete_cache(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+pub fn delete_cache(
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    exe: String,
+) -> tauri::Result<()> {
     let path = {
-        let paths = paths.lock().unwrap();
-        paths.simba.clone()
+        let paths = launcher_vars.lock().unwrap();
+        if exe == "devsimba" {
+            paths.devsimba.clone()
+        } else {
+            paths.simba.clone()
+        }
     };
-    let cache_path = path.join("Data/Cache");
+    let cache_path = path.join("Data").join("Cache");
 
     if cache_path.exists() {
         remove_dir_all(&cache_path).expect("Failed to delete cache path.");
@@ -73,13 +125,20 @@ pub fn delete_cache(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<(
 }
 
 #[tauri::command]
-pub fn delete_assets(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+pub fn delete_assets(
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    exe: String,
+) -> tauri::Result<()> {
     let path = {
-        let paths = paths.lock().unwrap();
-        paths.simba.clone()
+        let paths = launcher_vars.lock().unwrap();
+        if exe == "devsimba" {
+            paths.devsimba.clone()
+        } else {
+            paths.simba.clone()
+        }
     };
 
-    let assets_path = path.join("Data/Assets");
+    let assets_path = path.join("Data").join("Assets");
 
     if assets_path.exists() {
         remove_dir_all(&assets_path).expect("Failed to delete assets path.");
@@ -90,17 +149,24 @@ pub fn delete_assets(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<
 }
 
 #[tauri::command]
-pub fn delete_configs(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+pub fn delete_configs(
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    exe: String,
+) -> tauri::Result<()> {
     let path = {
-        let paths = paths.lock().unwrap();
-        paths.simba.clone()
+        let paths = launcher_vars.lock().unwrap();
+        if exe == "devsimba" {
+            paths.devsimba.clone()
+        } else {
+            paths.simba.clone()
+        }
     };
 
-    let assets_path = path.join("Configs");
+    let configs = path.join("Configs");
 
-    if assets_path.exists() {
-        remove_dir_all(&assets_path).expect("Failed to delete configs path.");
-        println!("Deleted folder: {:?}", assets_path);
+    if configs.exists() {
+        remove_dir_all(&configs).expect("Failed to delete configs path.");
+        println!("Deleted folder: {:?}", configs);
     }
 
     Ok(())
@@ -148,14 +214,14 @@ pub fn save_blob(
 
 #[tauri::command]
 pub async fn run_executable(
-    paths: State<'_, Mutex<ExecutablePaths>>,
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
     args: Vec<String>,
 ) -> Result<String, String> {
     let args_clone = args.clone();
 
     let path = {
-        let paths = paths.lock().unwrap();
+        let paths = launcher_vars.lock().unwrap();
         match exe.as_str() {
             "simba" => paths.simba.clone(),
             "devsimba" => paths.devsimba.clone(),
@@ -169,7 +235,7 @@ pub async fn run_executable(
         run_simba(path, args).await;
     } else if exe == "devsimba" {
         let diff_dirs = {
-            let paths = paths.lock().unwrap();
+            let paths = launcher_vars.lock().unwrap();
             paths.simba != paths.devsimba
         };
 
@@ -252,9 +318,11 @@ pub async fn sign_up(id: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn get_plugin_version(paths: State<'_, Mutex<ExecutablePaths>>) -> Result<String, String> {
+pub fn get_plugin_version(
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+) -> Result<String, String> {
     let path = {
-        let paths = paths.lock().unwrap();
+        let paths = launcher_vars.lock().unwrap();
         paths.simba.clone()
     };
     let version_path = path.join("Plugins/wasp-plugins/version.simba");
@@ -263,10 +331,17 @@ pub fn get_plugin_version(paths: State<'_, Mutex<ExecutablePaths>>) -> Result<St
 }
 
 #[tauri::command]
-pub async fn reinstall_plugins(paths: State<'_, Mutex<ExecutablePaths>>) -> tauri::Result<()> {
+pub async fn reinstall_plugins(
+    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    exe: String,
+) -> tauri::Result<()> {
     let path = {
-        let paths = paths.lock().unwrap();
-        paths.simba.clone()
+        let paths = launcher_vars.lock().unwrap();
+        if exe == "devsimba" {
+            paths.devsimba.clone()
+        } else {
+            paths.simba.clone()
+        }
     };
 
     println!("Reinstalling plugins!");

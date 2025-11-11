@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from "$app/state"
 	import { Avatar } from "@skeletonlabs/skeleton-svelte"
-	import { LogOut } from "@lucide/svelte"
+	import LogOut from "@lucide/svelte/icons/log-out"
 	import Logo from "./Navigation/Logo.svelte"
 	import Lightswitch from "./Navigation/Lightswitch.svelte"
 	import ThemeSwitcher from "./Navigation/ThemeSwitcher.svelte"
@@ -27,11 +27,11 @@
 
 <nav class="sticky top-0 w-full flex-col text-base">
 	<div
-		class="flex h-full w-full justify-between bg-surface-200/30 font-semibold backdrop-blur-md dark:bg-surface-800/30"
+		class="flex h-full w-full justify-between bg-surface-300/30 font-semibold backdrop-blur-md dark:bg-surface-800/30"
 	>
 		<a
 			href="/scripts"
-			class="mx-4 my-auto flex h-full text-primary-600-400 hover:text-primary-600-400"
+			class="mx-4 my-auto flex h-full text-surface-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-100"
 			aria-label="Navigate to home page"
 			data-sveltekit-preload-data="false"
 		>
@@ -50,13 +50,13 @@
 				</span>
 
 				<Avatar
-					{src}
-					name={profile.username}
-					classes="w-12 h-11"
-					border="border-2 group-hover:preset-tonal {showProfile
+					class="h-11 w-12 border-2 group-hover:preset-tonal {showProfile
 						? 'border-primary-500'
 						: 'border-surface-500'}"
-				/>
+				>
+					<Avatar.Image {src} alt={profile.username} />
+					<Avatar.Fallback>{profile.username}</Avatar.Fallback>
+				</Avatar>
 			</button>
 
 			<Lightswitch />

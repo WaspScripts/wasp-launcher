@@ -3,7 +3,6 @@
 @plugin '@tailwindcss/typography';
 
 @import "@skeletonlabs/skeleton";
-@import "@skeletonlabs/skeleton/optional/presets";
 @import "@skeletonlabs/skeleton/themes/cerberus";
 @import "@skeletonlabs/skeleton/themes/concord";
 @import "@skeletonlabs/skeleton/themes/fennec";
@@ -11,7 +10,7 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
+@import "@skeletonlabs/skeleton-svelte";
 
 @layer utilities {
 	/* Hide scrollbar for Chrome, Safari and Opera */
@@ -33,4 +32,26 @@ html.dark .shiki span {
 	font-style: var(--shiki-dark-font-style) !important;
 	font-weight: var(--shiki-dark-font-weight) !important;
 	text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+dialog,
+dialog::backdrop {
+	--anim-duration: 250ms;
+	transition:
+		display var(--anim-duration) allow-discrete,
+		overlay var(--anim-duration) allow-discrete,
+		opacity var(--anim-duration);
+	opacity: 0;
+}
+/* Animate In */
+dialog[open],
+dialog[open]::backdrop {
+	opacity: 1;
+}
+/* Animate Out */
+@starting-style {
+	dialog[open],
+	dialog[open]::backdrop {
+		opacity: 0;
+	}
 }

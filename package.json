@@ -32,14 +32,15 @@
 		"tailwindcss": "^4.1.16"
 	},
 	"devDependencies": {
-		"@skeletonlabs/skeleton": "^3.2.2",
-		"@skeletonlabs/skeleton-svelte": "^1.5.3",
+		"@skeletonlabs/skeleton": "^4.3.0",
+		"@skeletonlabs/skeleton-svelte": "^4.3.0",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.47.3",
 		"@sveltejs/vite-plugin-svelte": "^5.1.1",
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tauri-apps/cli": "^2.9.1",
+		"@types/markdown-it-emoji": "^3.0.1",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.6.14",

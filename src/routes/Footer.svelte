@@ -1,9 +1,6 @@
 <script lang="ts">
-	import { Tooltip } from "@skeletonlabs/skeleton-svelte"
+	import { Portal, Tooltip } from "@skeletonlabs/skeleton-svelte"
 	import { invoke } from "@tauri-apps/api/core"
-	import Discord from "./Footer/Discord.svelte"
-	import GitHub from "./Footer/GitHub.svelte"
-	import YouTube from "./Footer/YouTube.svelte"
 	import type { ScriptEx } from "$lib/types/collection"
 	import { page } from "$app/state"
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
@@ -107,57 +104,55 @@
 
 		await invoke("run_executable", { exe, args })
 	}
-	let openState = $state(false)
+
+	let lazyGithub = import("./Footer/GitHub.svelte")
+	let lazyDiscord = import("./Footer/Discord.svelte")
+	let lazyYouTube = import("./Footer/YouTube.svelte")
 </script>
 
 <footer
 	class="sticky bottom-0 flex justify-between bg-surface-200/30 text-base font-semibold backdrop-blur-md dark:bg-surface-800/30"
 >
 	<div class="mx-4 my-4 flex gap-2">
-		<Tooltip
-			open={openState}
-			onOpenChange={(e) => (openState = e.open)}
-			positioning={{ placement: "top" }}
-			triggerBase="underline"
-			contentBase="card preset-filled p-4"
-			openDelay={1000}
-			arrow
-		>
-			{#snippet trigger()}
-				<GitHub />
-			{/snippet}
-			{#snippet content()}Source code{/snippet}
-		</Tooltip>
+		{#await lazyGithub then { default: LazyGithub }}
+			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
+				<Tooltip.Trigger class="underline">
+					<LazyGithub />
+				</Tooltip.Trigger>
+				<Portal>
+					<Tooltip.Positioner>
+						<Tooltip.Content class="card preset-filled p-4">Source code</Tooltip.Content>
+					</Tooltip.Positioner>
+				</Portal>
+			</Tooltip>
+		{/await}
 
-		<Tooltip
-			open={openState}
-			onOpenChange={(e) => (openState = e.open)}
-			positioning={{ placement: "top" }}
-			triggerBase="underline"
-			contentBase="card preset-filled p-4"
-			openDelay={1000}
-			arrow
-		>
-			{#snippet trigger()}
-				<Discord />
-			{/snippet}
-			{#snippet content()}Join the Discord community!{/snippet}
-		</Tooltip>
-
-		<Tooltip
-			open={openState}
-			onOpenChange={(e) => (openState = e.open)}
-			positioning={{ placement: "top" }}
-			triggerBase="underline"
-			contentBase="card preset-filled p-4"
-			openDelay={1000}
-			arrow
-		>
-			{#snippet trigger()}
-				<YouTube />
-			{/snippet}
-			{#snippet content()}YouTube channel{/snippet}
-		</Tooltip>
+		{#await lazyDiscord then { default: LazyDiscord }}
+			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
+				<Tooltip.Trigger class="underline">
+					<LazyDiscord />
+				</Tooltip.Trigger>
+				<Portal>
+					<Tooltip.Positioner>
+						<Tooltip.Content class="card preset-filled p-4"
+							>Join the Discord community!</Tooltip.Content
+						>
+					</Tooltip.Positioner>
+				</Portal>
+			</Tooltip>
+		{/await}
+		{#await lazyYouTube then { default: LazyYouTube }}
+			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
+				<Tooltip.Trigger class="underline">
+					<LazyYouTube />
+				</Tooltip.Trigger>
+				<Portal>
+					<Tooltip.Positioner>
+						<Tooltip.Content class="card preset-filled p-4">YouTube channel</Tooltip.Content>
+					</Tooltip.Positioner>
+				</Portal>
+			</Tooltip>
+		{/await}
 	</div>
 
 	{#if script}
@@ -173,31 +168,19 @@
 					</select>
 				{/await}
 
-				<Tooltip
-					open={openState}
-					onOpenChange={(e) => (openState = e.open)}
-					positioning={{ placement: "top" }}
-					triggerBase="underline"
-					contentBase="card preset-filled p-4"
-					openDelay={1000}
-					arrow
-				>
-					{#snippet trigger()}
+				<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
+					<Tooltip.Trigger class="underline">
 						<button class="mx-4 my-4 btn preset-filled-primary-500" onclick={execute}>Run</button>
-					{/snippet}
-					{#snippet content()}Open in Simba{/snippet}
+					</Tooltip.Trigger>
+					<Portal>
+						<Tooltip.Positioner>
+							<Tooltip.Content class="card preset-filled p-4">Open in Simba</Tooltip.Content>
+						</Tooltip.Positioner>
+					</Portal>
 				</Tooltip>
 			{:else}
-				<Tooltip
-					open={openState}
-					onOpenChange={(e) => (openState = e.open)}
-					positioning={{ placement: "top" }}
-					triggerBase="underline"
-					contentBase="card preset-filled p-4"
-					openDelay={1000}
-					arrow
-				>
-					{#snippet trigger()}
+				<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
+					<Tooltip.Trigger class="underline">
 						<a
 							class="mx-4 my-4 btn preset-filled-primary-500"
 							href="https://waspscripts.dev/scripts/{script.id}"
@@ -205,8 +188,12 @@
 						>
 							Buy
 						</a>
-					{/snippet}
-					{#snippet content()}Open in Simba{/snippet}
+					</Tooltip.Trigger>
+					<Portal>
+						<Tooltip.Positioner>
+							<Tooltip.Content class="card preset-filled p-4">Buy Script</Tooltip.Content>
+						</Tooltip.Positioner>
+					</Portal>
 				</Tooltip>
 			{/if}
 		</div>

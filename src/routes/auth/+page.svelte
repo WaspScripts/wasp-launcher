@@ -4,7 +4,7 @@
 	import { listen } from "@tauri-apps/api/event"
 	import { invalidate } from "$app/navigation"
 	import Discord from "$lib/components/Discord.svelte"
-	import Logo from "$lib/components/Logo.svelte"
+	import Logo from "./Logo.svelte"
 	import { getUser } from "$lib/supabase"
 
 	let { data } = $props()
@@ -82,7 +82,7 @@
 
 		let result = await checkProfile(user.id)
 		if (result) {
-			await invalidate("supabase:auth")
+			await invalidate("root:layout")
 			return
 		}
 
@@ -90,7 +90,7 @@
 
 		result = await checkProfile(user.id)
 		if (result) {
-			await invalidate("supabase:auth")
+			await invalidate("root:layout")
 			return
 		}
 	}
@@ -99,10 +99,10 @@
 <main class="container mx-auto flex h-screen items-center justify-center">
 	<div class="mx-auto my-24 flex flex-col">
 		<Logo />
-		<form class="my-20 flex items-center" onsubmit={async () => await login()}>
-			<button type="submit" class="btn preset-filled-surface-300-700 py-2 hover:preset-tonal">
+		<form class="mx-auto my-32" onsubmit={async () => await login()}>
+			<button type="submit" class="btn preset-filled-surface-300-700 p-4 hover:preset-tonal">
 				<Discord />
-				<span> Login with Discord </span>
+				<span class="text-lg"> Login with Discord </span>
 			</button>
 		</form>
 	</div>

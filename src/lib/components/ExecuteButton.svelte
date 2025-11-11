@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Tooltip } from "@skeletonlabs/skeleton-svelte"
+	import { Portal, Tooltip } from "@skeletonlabs/skeleton-svelte"
 	import { invoke } from "@tauri-apps/api/core"
 
 	let { icon, label, exe, args } = $props()
@@ -15,15 +15,18 @@
 	open={openState}
 	onOpenChange={(e) => (openState = e.open)}
 	positioning={{ placement: "top" }}
-	triggerBase="underline"
-	contentBase="card preset-filled p-4"
 	openDelay={1000}
-	arrow
 >
-	{#snippet trigger()}
-		<button class="btn preset-filled-surface-500 [&>*]:pointer-events-none" onclick={execute}>
+	<Tooltip.Trigger class="underline">
+		<button class="btn preset-filled-surface-500 *:pointer-events-none" onclick={execute}>
 			{icon}
 		</button>
-	{/snippet}
-	{#snippet content()}{label}{/snippet}
+	</Tooltip.Trigger>
+	<Portal>
+		<Tooltip.Positioner>
+			<Tooltip.Content class="card preset-filled p-4">
+				{label}
+			</Tooltip.Content>
+		</Tooltip.Positioner>
+	</Portal>
 </Tooltip>

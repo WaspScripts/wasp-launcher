@@ -334,8 +334,10 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
             .expect("Failed to download or unzip Win64.zip");
     }
 
-    let _ =
-        download_and_unzip_directory(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
+    if args[2] != "none" {
+        let _ = download_and_unzip_directory(path.join("Includes"), "WaspLib", "wasplib", &args[2])
+            .await;
+    }
 
     let script_file: String = path
         .join("Scripts")

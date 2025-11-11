@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from "$app/state"
-	import { SunMoon } from "@lucide/svelte"
+	import SunMoon from "@lucide/svelte/icons/sun-moon"
 
 	const { settings, dark } = $derived(page.data)
 
@@ -14,6 +14,6 @@
 	}
 </script>
 
-<button class="btn hover:preset-tonal my-auto" onclick={async () => await toggleDarkMode()}>
+<button class="my-auto btn hover:preset-tonal" onclick={async () => await toggleDarkMode()}>
 	<SunMoon />
 </button>

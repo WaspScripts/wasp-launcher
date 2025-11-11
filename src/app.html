@@ -5,31 +5,11 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		%sveltekit.head%
-		<style>
-			.animate-gradient {
-				background-size: 900%;
-				-webkit-animation: animatedgradient 300s ease infinite alternate;
-				-moz-animation: animatedgradient 300s ease infinite alternate;
-				animation: animatedgradient 300s ease infinite alternate;
-			}
-
-			@keyframes animatedgradient {
-				0% {
-					background-position: 100% 50%;
-				}
-				50% {
-					background-position: 10% 50%;
-				}
-				100% {
-					background-position: 100% 50%;
-				}
-			}
-		</style>
 	</head>
 	<body
 		data-sveltekit-preload-data="hover"
 		data-theme="wasp"
-		class="min-w-scree animate-gradient flex h-screen max-h-screen min-h-screen w-screen max-w-screen flex-col bg-gradient-to-br from-secondary-400-600 via-surface-200-800 via-10% to-surface-50-950 to-50%"
+		class="flex h-screen max-h-screen min-h-screen w-screen max-w-screen min-w-screen flex-col"
 	>
 		<div class="contents">%sveltekit.body%</div>
 	</body>
