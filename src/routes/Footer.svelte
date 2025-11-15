@@ -116,7 +116,7 @@
 	<div class="mx-4 my-4 flex gap-2">
 		{#await lazyGithub then { default: LazyGithub }}
 			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-				<Tooltip.Trigger class="underline">
+				<Tooltip.Trigger>
 					<LazyGithub />
 				</Tooltip.Trigger>
 				<Portal>
@@ -129,7 +129,7 @@
 
 		{#await lazyDiscord then { default: LazyDiscord }}
 			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-				<Tooltip.Trigger class="underline">
+				<Tooltip.Trigger>
 					<LazyDiscord />
 				</Tooltip.Trigger>
 				<Portal>
@@ -143,7 +143,7 @@
 		{/await}
 		{#await lazyYouTube then { default: LazyYouTube }}
 			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-				<Tooltip.Trigger class="underline">
+				<Tooltip.Trigger>
 					<LazyYouTube />
 				</Tooltip.Trigger>
 				<Portal>
@@ -156,12 +156,12 @@
 	</div>
 
 	{#if script}
-		<div class="flex">
+		<div class="mx-4 my-4 flex gap-2">
 			{#if script.access}
 				{#await versionsPromise}
-					<select class="my-auto select"> Loading... </select>
+					<select id="loading" class="select hover:preset-tonal"> Loading... </select>
 				{:then versions}
-					<select class="my-auto select" bind:value={selected}>
+					<select id="revision" class="select hover:preset-tonal" bind:value={selected}>
 						{#each versions as version, idx}
 							<option value={idx}>Revision {version.revision}</option>
 						{/each}
@@ -169,8 +169,13 @@
 				{/await}
 
 				<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-					<Tooltip.Trigger class="underline">
-						<button class="mx-4 my-4 btn preset-filled-primary-500" onclick={execute}>Run</button>
+					<Tooltip.Trigger>
+						<button
+							class="hover:preset-filled-primary-800 btn preset-filled-primary-500"
+							onclick={execute}
+						>
+							Run
+						</button>
 					</Tooltip.Trigger>
 					<Portal>
 						<Tooltip.Positioner>
@@ -180,9 +185,9 @@
 				</Tooltip>
 			{:else}
 				<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-					<Tooltip.Trigger class="underline">
+					<Tooltip.Trigger class="m-auto">
 						<a
-							class="mx-4 my-4 btn preset-filled-primary-500"
+							class="btn preset-filled-primary-500 hover:preset-tonal"
 							href="https://waspscripts.dev/scripts/{script.id}"
 							target="_blank"
 						>

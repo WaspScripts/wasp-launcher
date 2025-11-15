@@ -1,6 +1,6 @@
 <a
 	href="https://github.com/WaspScripts/wasp-launcher"
-	class="my-auto btn flex hover:preset-tonal"
+	class="my-auto btn flex h-8 hover:preset-tonal"
 	aria-label="GitHub Link"
 	target="_blank"
 >

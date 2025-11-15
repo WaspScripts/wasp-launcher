@@ -1,21 +1,6 @@
 <script lang="ts">
-	import { invalidate } from "$app/navigation"
+	import { mardownRenderer } from "$lib/markdown.js"
 	import { invoke } from "@tauri-apps/api/core"
-	import { open } from "@tauri-apps/plugin-dialog"
-
-	let { data } = $props()
-
-	async function getFile(exe: string, current: string) {
-		let path = await open({
-			title: "Pick a " + exe.toUpperCase() + " executable",
-			defaultPath: current,
-			multiple: false,
-			directory: false,
-			filters: [{ name: "Executables", extensions: ["exe"] }]
-		})
-		await invoke("set_executable_path", { exe, path })
-		await invalidate("executable:paths")
-	}
 
 	let deletingCache = $state(false)
 	async function deleteCache() {
@@ -46,31 +31,17 @@
 		await invoke("reinstall_plugins", { exe: "simba" })
 		reinstallingPlugins = false
 	}
+
+	const info = `Here you can reset several things related to your Simba install that could have gone bad.
+
+If you keep having issues, it's recommened you close all of your runescape clients and/or Simba instances before trying the buttons below.`
 </script>
 
-<main class="flex flex-col">
-	<div class="mx-auto my-4 space-y-8 rounded-md preset-outlined-surface-300-700 p-12">
-		<header>
-			<h1 class="text-xl font-bold">OSRS Clients:</h1>
-		</header>
-
-		<label class="label-text">
-			RuneLite path:
-			<input
-				class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
-				value={data.runelite}
-				onclick={async () => await getFile("runelite", data.runelite!)}
-			/>
-		</label>
-
-		<label class="label-text">
-			OSClient path:
-			<input
-				class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
-				value={data.osclient}
-				onclick={async () => await getFile("osclient", data.osclient!)}
-			/>
-		</label>
+<main class="mx-12 flex flex-col gap-6">
+	<div
+		class="mx-auto prose h-80 w-full min-w-full overflow-y-scroll rounded-md preset-outlined-surface-300-700 p-8 dark:prose-invert"
+	>
+		{@html mardownRenderer.render(info)}
 	</div>
 
 	<div class="mx-auto my-4 flex gap-2">
