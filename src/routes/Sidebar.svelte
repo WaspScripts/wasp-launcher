@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from "$app/state"
-	import ExecuteButton from "$lib/components/ExecuteButton.svelte"
+	/* import ExecuteButton from "$lib/components/ExecuteButton.svelte" */
 	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 	import { Tooltip, Portal } from "@skeletonlabs/skeleton-svelte"
 	import type { Session } from "@supabase/supabase-js"
@@ -104,8 +104,8 @@
 		</Portal>
 	</Tooltip>
 
-	<ExecuteButton icon="⚡" label="RuneLite" exe="runelite" args={[]} />
-	<ExecuteButton icon="🔥" label="OSClient" exe="osclient" args={[]} />
+		<!-- <ExecuteButton icon="⚡" label="RuneLite" exe="runelite" args={[]} />
+	<ExecuteButton icon="🔥" label="OSClient" exe="osclient" args={[]} /> -->
 
 	<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 		<Tooltip.Trigger class="underline">

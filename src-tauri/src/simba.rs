@@ -355,7 +355,7 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
     }
 
-    if args[2] != "latest" {
+    if (args[2] != "latest") && (args[2] != "none") {
         cmd.env("SCRIPT_WASPLIB_VERSION", &args[2]);
     }
 
