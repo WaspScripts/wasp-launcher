@@ -72,7 +72,6 @@ If you keep having issues, it's recommened you close all of your runescape clien
 
 		<dialog
 			bind:this={dialog}
-			data-dialog
 			class="top-1/2 left-1/2 z-10 max-w-[640px] -translate-1/2 space-y-4 rounded-container bg-surface-100-900 p-4 text-inherit backdrop:bg-surface-50/75 dark:backdrop:bg-surface-950/75"
 		>
 			<h2 class="h3">Reinstall Plugins</h2>
