@@ -90,7 +90,6 @@
 		const awaitedPromises = await Promise.all(promises)
 
 		let refreshToken = awaitedPromises[0] as string
-		console.log(refreshToken)
 
 		const exe = "simba"
 		const args = [

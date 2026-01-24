@@ -35,7 +35,7 @@
 			aria-label="Navigate to home page"
 			data-sveltekit-preload-data="false"
 		>
-			<Logo selected={false} />
+			<Logo />
 		</a>
 
 		<div class="mx-2 flex gap-1">
@@ -54,7 +54,7 @@
 						? 'border-primary-500'
 						: 'border-surface-500'}"
 				>
-					<Avatar.Image {src} alt={profile.username} />
+					<Avatar.Image {src} alt={profile.username} loading="eager" />
 					<Avatar.Fallback>{profile.username}</Avatar.Fallback>
 				</Avatar>
 			</button>

@@ -32,8 +32,7 @@ try {
 	}
 
 	const json = await response.json()
-	const tsCode = json.types
-	await writeFile(outputPath, tsCode)
+	await writeFile(outputPath, json.toString())
 
 	console.log(`Types file updated!`)
 } catch (err) {

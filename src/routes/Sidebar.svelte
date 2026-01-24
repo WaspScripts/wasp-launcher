@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from "$app/state"
 	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
+	import { supabase } from "$lib/supabase"
 	import { Tooltip, Portal } from "@skeletonlabs/skeleton-svelte"
 	import type { Session } from "@supabase/supabase-js"
 	import { invoke } from "@tauri-apps/api/core"
@@ -16,24 +17,48 @@
 
 	let runningBtn = $derived(page.url.pathname.includes("/running") ? "/scripts" : "/running")
 
-	async function execute(exe: string, wasplib: string) {
-		let refresh_token = ""
+	async function getNewSessionToken() {
+		let result = ""
 		try {
 			const response = await fetch("https://api.waspscripts.dev/session", {
 				method: "GET",
 				headers: {
-					Authorization: "Bearer " + session.access_token,
-					RefreshToken: session.refresh_token,
+					authorization: "Bearer " + session.access_token,
+					refreshtoken: session.refresh_token,
 					"Content-Type": "application/json"
 				}
 			})
 			const data = await response.json()
-			refresh_token = data.refresh_token
+			result = data.refresh_token
 		} catch (err) {
 			console.error(err)
 		}
 
-		await invoke("run_executable", { exe, args: ["", "latest", wasplib, "", "", refresh_token] })
+		return result
+	}
+
+	async function execute(exe: string, wasplib: string) {
+		const promises = await Promise.all([
+			getNewSessionToken(),
+			supabase
+				.schema("scripts")
+				.from("wasplib")
+				.select("simba")
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.single()
+		])
+
+		let refresh_token = promises[0]
+
+		const { data, error: versionErr } = promises[1]
+
+		if (versionErr) {
+			console.error(versionErr)
+			return
+		}
+
+		await invoke("run_executable", { exe, args: ["", data.simba, wasplib, "", "", refresh_token] })
 	}
 </script>
 

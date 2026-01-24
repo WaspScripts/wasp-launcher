@@ -1,4 +1,6 @@
-export type Role = "premium" | "vip" | "tester" | "scripter" | "moderator" | "administrator" | null
+import type { Database } from "./supabase"
+
+export type Role = Database["profiles"]["Enums"]["roles"] | null
 
 export interface Script {
 	id: string
@@ -14,8 +16,8 @@ export interface Script {
 		updated_at: number
 	}
 	metadata: {
-		status: "official" | "community"
-		type: "premium" | "free"
+		status: Database["scripts"]["Enums"]["status"]
+		type: Database["scripts"]["Enums"]["type"]
 	}
 }
 
