@@ -119,7 +119,7 @@ export async function getScripts(role: Role) {
 		.select(
 			`id, url, title, description, content, published,
 			protected!left (username, avatar, revision, updated_at),
-			metadata!left (status, type)`
+			metadata!left (status, type, stage)`
 		)
 
 	if (role != "tester" && role != "scripter" && role != "moderator" && role != "administrator") {

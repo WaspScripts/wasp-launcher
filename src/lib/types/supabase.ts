@@ -333,6 +333,10 @@ export type Database = {
         Args: { accesser_id: string; script_id: string } | { script_id: string }
         Returns: boolean
       }
+      can_view: {
+        Args: { viewer_id: string; script_id: string }
+        Returns: boolean
+      }
       can_view_subscription: {
         Args: { accesser: string; owner: string; product: string }
         Returns: boolean
@@ -463,18 +467,21 @@ export type Database = {
         Row: {
           categories: Database["scripts"]["Enums"]["category"][]
           id: string
+          stage: Database["scripts"]["Enums"]["stage"]
           status: Database["scripts"]["Enums"]["status"]
           type: Database["scripts"]["Enums"]["type"]
         }
         Insert: {
           categories?: Database["scripts"]["Enums"]["category"][]
           id: string
+          stage?: Database["scripts"]["Enums"]["stage"]
           status?: Database["scripts"]["Enums"]["status"]
           type?: Database["scripts"]["Enums"]["type"]
         }
         Update: {
           categories?: Database["scripts"]["Enums"]["category"][]
           id?: string
+          stage?: Database["scripts"]["Enums"]["stage"]
           status?: Database["scripts"]["Enums"]["status"]
           type?: Database["scripts"]["Enums"]["type"]
         }
@@ -666,6 +673,27 @@ export type Database = {
         Args: { script_id: string }
         Returns: boolean
       }
+      is_stage: {
+        Args: {
+          script_id: string
+          target_stage: Database["scripts"]["Enums"]["stage"]
+        }
+        Returns: boolean
+      }
+      max_stage: {
+        Args: {
+          script_id: string
+          target_stage: Database["scripts"]["Enums"]["stage"]
+        }
+        Returns: boolean
+      }
+      min_stage: {
+        Args: {
+          script_id: string
+          target_stage: Database["scripts"]["Enums"]["stage"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       category:
@@ -692,6 +720,7 @@ export type Database = {
         | "slayer"
         | "thieving"
         | "runecrafting"
+      stage: "prototype" | "alpha" | "beta" | "stable" | "archived"
       status: "official" | "community"
       type: "premium" | "free"
     }
@@ -1784,6 +1813,7 @@ export const Constants = {
         "thieving",
         "runecrafting",
       ],
+      stage: ["prototype", "alpha", "beta", "stable", "archived"],
       status: ["official", "community"],
       type: ["premium", "free"],
     },

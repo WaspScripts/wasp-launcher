@@ -18,6 +18,7 @@ export interface Script {
 	metadata: {
 		status: Database["scripts"]["Enums"]["status"]
 		type: Database["scripts"]["Enums"]["type"]
+		stage: Database["scripts"]["Enums"]["stage"]
 	}
 }
 

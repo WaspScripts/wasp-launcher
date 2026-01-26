@@ -10,8 +10,7 @@
 
 	$inspect(data.script)
 
-	function getStyle(id: string, access: boolean, type: string, published: boolean) {
-		if (page.url.pathname == "/scripts/" + id) return "text-primary-950-50"
+	function getStyle(access: boolean, type: string, published: boolean) {
 		if (!published) {
 			return "text-success-500"
 		}
@@ -21,6 +20,8 @@
 			return "text-warning-500"
 		}
 	}
+
+	let selected = $state(0)
 </script>
 
 <Navigation />
@@ -33,16 +34,20 @@
 			bind:value={search}
 		/>
 		<ul class="my-2 h-full overflow-y-scroll">
-			{#each scripts as script}
-				<li class="flex preset-outlined-success-200-800 hover:preset-tonal">
+			{#each scripts as script, idx}
+				<li
+					class="flex preset-outlined-success-200-800 hover:preset-tonal focus:preset-tonal"
+					class:bg-surface-300-700={selected === idx}
+					class:border-primary-300-700={selected === idx}
+				>
 					<a
 						href={script.id}
 						class="h-full w-full px-2 {getStyle(
-							script.id,
 							script.access,
 							script.metadata.type,
 							script.published
 						)}"
+						onclick={() => (selected = idx)}
 					>
 						{script.title}
 					</a>
@@ -51,7 +56,7 @@
 		</ul>
 	</aside>
 
-	<div class="flex h-full flex-col overflow-y-auto">
+	<div class="mx-2 flex h-full w-full flex-col gap-y-4 overflow-y-auto">
 		{@render children()}
 	</div>
 

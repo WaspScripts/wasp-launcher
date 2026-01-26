@@ -8,11 +8,10 @@
 	let hasLink: boolean = $derived(data.hasLink)
 </script>
 
-<header class="my-4 flex w-full flex-col justify-between lg:flex-row">
-	<div class="mx-auto flex aspect-auto h-full max-h-60 w-auto">
-		{@render children()}
-	</div>
-	<div class="my-auto text-center lg:mx-4">
+<header class="flex w-full flex-col justify-end gap-4 lg:flex-row">
+	{@render children()}
+
+	<div class="my-auto w-64 text-center">
 		<h1 class="my-4 font-bold">
 			{title ? title : "Loading..."} by
 

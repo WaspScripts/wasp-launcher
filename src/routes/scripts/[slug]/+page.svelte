@@ -39,21 +39,28 @@
 	description={script.description}
 >
 	<img
-		class="rounded-md"
+		class="max-h-60 w-full rounded-md"
 		src={DATABASE_URL + "storage/v1/object/public/imgs/scripts/" + script.id + "/banner.jpg"}
 		alt="Script banner"
 		loading="lazy"
 	/>
 </ScriptHeader>
 
-{#if !script.published}
-	<span class="text-center text-warning-500">
-		This script is not published and not visible for everyone!
-	</span>
-{/if}
+<div
+	class="flex h-full w-full flex-col overflow-y-scroll rounded-md preset-outlined-surface-500 p-8"
+>
+	{#if !script.published}
+		<small class="text-center text-xs text-warning-500">
+			This script is not published and not visible for everyone!
+		</small>
+	{/if}
+	{#if ["prototype", "alpha", "beta", "archived"].includes(script.metadata.stage)}
+		<small class="text-center text-xs text-warning-500">
+			This is a {script.metadata.stage} script and may not be stable!
+		</small>
+	{/if}
 
-<div class="mx-2 mt-4 mb-2 flex h-full overflow-y-scroll rounded-md preset-outlined-surface-500">
-	<article class="m-4 prose dark:prose-invert">
+	<article class="my-4 prose dark:prose-invert">
 		{@html mardownRenderer.render(content)}
 	</article>
 </div>
