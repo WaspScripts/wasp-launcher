@@ -3,6 +3,7 @@
 	import Footer from "../Footer.svelte"
 	import Sidebar from "../Sidebar.svelte"
 	import { page } from "$app/state"
+	import { scriptStages } from "$lib/utils"
 
 	let { data, children } = $props()
 	const scripts = $derived(data.scripts!)
@@ -33,7 +34,7 @@
 			class="input text-xs outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
 			bind:value={search}
 		/>
-		<ul class="my-2 h-full overflow-y-scroll">
+		<ul class="my-2 h-full w-64 overflow-y-scroll">
 			{#each scripts as script, idx}
 				<li
 					class="flex preset-outlined-success-200-800 hover:preset-tonal focus:preset-tonal"
@@ -46,10 +47,18 @@
 							script.access,
 							script.metadata.type,
 							script.published
-						)}"
+						)} my-2 flex justify-between"
 						onclick={() => (selected = idx)}
 					>
 						{script.title}
+						{#if script.metadata.stage !== "stable"}
+							<div
+								class="my-auto h-fit w-fit rounded-md preset-outlined-surface-600-400 preset-filled-surface-500 px-1 whitespace-nowrap"
+							>
+								{scriptStages[script.metadata.stage].icon +
+									scriptStages[script.metadata.stage].name}
+							</div>
+						{/if}
 					</a>
 				</li>
 			{/each}

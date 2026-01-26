@@ -33,13 +33,13 @@
 </script>
 
 <ScriptHeader
-	id={script.id}
 	title={script.title}
 	username={script.protected.username}
 	description={script.description}
+	stage={script.metadata.stage}
 >
 	<img
-		class="max-h-60 w-full rounded-md"
+		class="mx-auto h-auto max-h-60 w-auto rounded-md"
 		src={DATABASE_URL + "storage/v1/object/public/imgs/scripts/" + script.id + "/banner.jpg"}
 		alt="Script banner"
 		loading="lazy"
@@ -52,11 +52,6 @@
 	{#if !script.published}
 		<small class="text-center text-xs text-warning-500">
 			This script is not published and not visible for everyone!
-		</small>
-	{/if}
-	{#if ["prototype", "alpha", "beta", "archived"].includes(script.metadata.stage)}
-		<small class="text-center text-xs text-warning-500">
-			This is a {script.metadata.stage} script and may not be stable!
 		</small>
 	{/if}
 

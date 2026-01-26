@@ -1,6 +1,7 @@
 import type { Database } from "./supabase"
 
 export type Role = Database["profiles"]["Enums"]["roles"] | null
+export type TScriptStages = Database["scripts"]["Enums"]["stage"]
 
 export interface Script {
 	id: string
@@ -18,7 +19,7 @@ export interface Script {
 	metadata: {
 		status: Database["scripts"]["Enums"]["status"]
 		type: Database["scripts"]["Enums"]["type"]
-		stage: Database["scripts"]["Enums"]["stage"]
+		stage: TScriptStages
 	}
 }
 
