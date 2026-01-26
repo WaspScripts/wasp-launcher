@@ -150,8 +150,7 @@ Also while on this tab, the buttons below will affect your development path.`
 
 		<dialog
 			bind:this={dialog}
-			data-dialog
-			class="top-1/2 left-1/2 z-10 max-w-[640px] -translate-1/2 space-y-4 rounded-container bg-surface-100-900 p-4 text-inherit backdrop:bg-surface-50/75 dark:backdrop:bg-surface-950/75"
+			class="top-1/2 left-1/2 z-10 max-w-[640px] -translate-1/2 space-y-4 rounded-container bg-surface-100-900 p-4 text-inherit backdrop-blur-lg backdrop:bg-surface-50-950/90"
 		>
 			<h2 class="h3">Reinstall Plugins</h2>
 			<p>Please make sure you are not running any client you've used waspscripts on.</p>
@@ -170,7 +169,7 @@ Also while on this tab, the buttons below will affect your development path.`
 		<button
 			class="btn preset-filled-primary-500 font-bold"
 			disabled={reinstallingPlugins || !$devModeStore}
-			onclick={() => dialog.show()}
+			onclick={() => dialog.showModal()}
 		>
 			Reinstall plugins
 		</button>
