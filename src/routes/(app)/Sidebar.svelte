@@ -67,7 +67,7 @@
 	let currentSidebar = $state(sidebar) as boolean
 
 	async function toggleSidebar() {
-		currentSidebar = !sidebar
+		currentSidebar = !currentSidebar
 		document.documentElement.classList.toggle("sidebar")
 		await settings.set("sidebar", currentSidebar)
 	}

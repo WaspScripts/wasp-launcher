@@ -8,7 +8,7 @@
 	let current = $state(dark) as boolean
 
 	async function toggleDarkMode() {
-		current = !dark
+		current = !current
 		document.documentElement.classList.toggle("dark")
 		await settings.set("dark", current)
 	}

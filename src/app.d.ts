@@ -15,17 +15,4 @@ declare namespace App {
 		theme: string
 		sidebar: boolean
 	}
-
-	interface PageState {
-		supabase: SupabaseClient<Database>
-		session: Session | null
-		user: User
-		profile: ProfileBase
-		settings: Store
-		dark: boolean
-		theme: string
-		sidebar: boolean
-	}
-	// interface Error {}
-	// interface Platform {}
 }
