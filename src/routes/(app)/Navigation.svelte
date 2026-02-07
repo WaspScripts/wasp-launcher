@@ -25,7 +25,7 @@
 	}
 </script>
 
-<nav class="sticky top-0 w-full flex-col text-base">
+<nav class="w-full flex-col text-base">
 	<div
 		class="flex h-full w-full justify-between bg-surface-300/30 font-semibold backdrop-blur-md dark:bg-surface-800/30"
 	>

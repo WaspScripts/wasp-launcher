@@ -21,10 +21,10 @@
 <header class="flex w-full flex-col justify-evenly gap-4 xl:flex-row">
 	{@render children()}
 
-	<div class="mx-auto my-auto w-96 text-center">
+	<div class="mx-auto my-auto w-auto text-center xl:w-96">
 		<h1 class="my-4 h5 font-bold">
 			{title ? title : "Loading..."} by
-			<span> {username ?? "Loading..."} </span>
+			<span class="text-nowrap"> {username ?? "Loading..."} </span>
 		</h1>
 		<h2 class="my-4">
 			{description ?? "Loading..."}

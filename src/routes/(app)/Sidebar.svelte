@@ -2,6 +2,7 @@
 	import { page } from "$app/state"
 	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 	import { supabase } from "$lib/supabase"
+	import { PanelLeftOpen } from "@lucide/svelte"
 	import { Tooltip, Portal } from "@skeletonlabs/skeleton-svelte"
 	import type { Session } from "@supabase/supabase-js"
 	import { invoke } from "@tauri-apps/api/core"
@@ -12,10 +13,10 @@
 	const path: string = $derived(page.data.simbaPath + "//Plugins")
 
 	let settingsBtn = $derived(
-		page.url.pathname.includes("/settings") ? "/scripts" : "/settings/general"
+		page.url.pathname.startsWith("/settings") ? "/scripts" : "/settings/general"
 	)
 
-	let runningBtn = $derived(page.url.pathname.includes("/running") ? "/scripts" : "/running")
+	let runningBtn = $derived(page.url.pathname.startsWith("/running") ? "/scripts" : "/running")
 
 	async function getNewSessionToken() {
 		let result = ""
@@ -60,34 +61,65 @@
 
 		await invoke("run_executable", { exe, args: ["", data.simba, wasplib, "", "", refresh_token] })
 	}
+
+	let open = $state(true)
 </script>
 
-<div class="flex h-full flex-col justify-between border-l border-surface-500">
+<div class="flex h-full flex-col justify-between gap-1 border-l border-surface-500 px-1">
+	<Tooltip positioning={{ placement: "top" }} openDelay={700}>
+		<Tooltip.Trigger
+			onclick={() => (open = !open)}
+			class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+		>
+			<span class="duration-400" class:rotate-180={!open}>
+				<PanelLeftOpen size="20" />
+			</span>
+			{#if open}
+				Collapse
+			{/if}
+		</Tooltip.Trigger>
+		<Portal>
+			<Tooltip.Positioner>
+				<Tooltip.Content class="card preset-filled p-4"
+					>{#if open}
+						Collapse
+					{:else}Expand{/if}</Tooltip.Content
+				>
+			</Tooltip.Positioner>
+		</Portal>
+	</Tooltip>
+
 	<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 		<Tooltip.Trigger>
 			<a
 				href={runningBtn}
-				class="btn preset-filled-surface-500 *:pointer-events-none"
+				class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 				data-sveltekit-preload-data="false"
 			>
 				🎮
+				{#if open}
+					Running
+				{/if}
 			</a>
 		</Tooltip.Trigger>
 		<Portal>
 			<Tooltip.Positioner>
-				<Tooltip.Content class="card preset-filled p-4">Running</Tooltip.Content>
+				<Tooltip.Content class="card preset-filled p-4">Show running scripts</Tooltip.Content>
 			</Tooltip.Positioner>
 		</Portal>
 	</Tooltip>
+
 	<div class="flex h-full flex-col justify-end gap-1 px-1">
 		{#if $devModeStore}
 			<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 				<Tooltip.Trigger>
 					<button
-						class="btn preset-filled-surface-500 *:pointer-events-none"
+						class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 						onclick={() => execute("devsimba", $devUpdatesStore ? "latest" : "none")}
 					>
-						🧪
+						🧪 {#if open}
+							Dev Simba
+						{/if}
 					</button>
 				</Tooltip.Trigger>
 				<Portal>
@@ -100,10 +132,12 @@
 			<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 				<Tooltip.Trigger>
 					<button
-						class="btn preset-filled-surface-500 *:pointer-events-none"
+						class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 						onclick={async () => await revealItemInDir($devPathStore + "//Plugins")}
 					>
-						💻
+						💻 {#if open}
+							Dev Folder
+						{/if}
 					</button>
 				</Tooltip.Trigger>
 				<Portal>
@@ -118,10 +152,13 @@
 		<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 			<Tooltip.Trigger>
 				<button
-					class="btn preset-filled-surface-500 *:pointer-events-none"
+					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 					onclick={() => execute("simba", "latest")}
 				>
 					🦁
+					{#if open}
+						Simba
+					{/if}
 				</button>
 			</Tooltip.Trigger>
 			<Portal>
@@ -134,10 +171,13 @@
 		<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 			<Tooltip.Trigger>
 				<button
-					class="btn preset-filled-surface-500 *:pointer-events-none"
+					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 					onclick={async () => await revealItemInDir(path)}
 				>
 					📁
+					{#if open}
+						Simba Folder
+					{/if}
 				</button>
 			</Tooltip.Trigger>
 			<Portal>
@@ -151,10 +191,12 @@
 			<Tooltip.Trigger>
 				<a
 					href={settingsBtn}
-					class="btn preset-filled-surface-500 *:pointer-events-none"
+					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 					data-sveltekit-preload-data="false"
 				>
-					⚙️
+					⚙️ {#if open}
+						Settings
+					{/if}
 				</a>
 			</Tooltip.Trigger>
 			<Portal>

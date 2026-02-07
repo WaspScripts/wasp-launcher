@@ -6,48 +6,16 @@ use std::{
 
 use tauri::Emitter;
 
-fn send_html(content: &str) -> String {
-    let html = format!(
-        "<!DOCTYPE html>\n\
-         <html>\n\
-           <head>\n\
-             <meta charset=\"UTF-8\">\n\
-             <link rel=\"icon\" href=\"https://waspscripts.dev/favicon.png\">\n\
-             <meta name=\"viewport\" content=\"width=device-width\">\n\
-             <title>WaspScripts</title>\n\
-             <meta name=\"description\" content=\"WaspScripts Simba Login page\">\n\
-             <style>\n\
-               body {{\n\
-                  background-color: #222324;\n\
-                  color: white;\n\
-                  display: flex;\n\
-                  justify-content: center;\n\
-                  height: 100vh;\n\
-                  text-align: center;\n\
-                  flex-direction: column;\n\
-               }}\n\
-             </style>\n\
-           </head>\n\
-          <body>\n\
-            {content}\n\
-          </body>\n\
-        </html>"
-    );
-
-    let headers = format!(
-        "HTTP/1.1 200 OK\r\n\
-         Content-Type: text/html\r\n\
+fn send_redirect(location: &str) -> String {
+    format!(
+        "HTTP/1.1 302 Found\r\n\
+         Location: {location}\r\n\
          Connection: close\r\n\
-         Content-Length: {}\r\n\r\n",
-        html.len()
-    );
-
-    format!("{headers}{html}")
+         Content-Length: 0\r\n\r\n"
+    )
 }
 
 pub fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
-    let response = send_html("<h2>Authentication Complete</h2>\r\n        <p>You may now close this window and return to the app.</p>");
-
     let mut buffer = [0; 1024];
     if stream.read(&mut buffer).is_err() {
         return false;
@@ -80,6 +48,15 @@ pub fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
     let code = params.get("code").map(|&s| s.to_string());
     let error = params.get("error").map(|&s| s.to_string());
 
+    // Determine redirect target
+    let redirect_url = if code.is_some() {
+        "https://waspscripts.dev/auth/launcher/successful"
+    } else {
+        "https://waspscripts.dev/auth/launcher/failed"
+    };
+
+    let response = send_redirect(redirect_url);
+
     let _ = stream.write_all(response.as_bytes());
     let _ = stream.flush();
 
@@ -91,5 +68,6 @@ pub fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
     let _ = app
         .emit("oauth-callback", payload)
         .expect("Failed to ping the front-end!");
+
     true
 }

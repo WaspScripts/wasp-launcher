@@ -41,7 +41,7 @@
 	}
 
 	const versionsPromise = $derived(getVersions(script.id))
-	let selected = $state(0)
+	let revision = $state(0)
 
 	async function getNewSessionToken() {
 		let result = ""
@@ -65,7 +65,7 @@
 
 	async function execute() {
 		const versions = await versionsPromise
-		const version = versions[selected]
+		const version = versions[revision]
 
 		let promises = []
 		promises.push(getNewSessionToken())
@@ -103,6 +103,9 @@
 
 		await invoke("run_executable", { exe, args })
 	}
+
+	/* const clients = ["client 0", "client 1", "client 2"]
+	let client = $state(0) */
 
 	let lazyGithub = import("./Footer/GitHub.svelte")
 	let lazyDiscord = import("./Footer/Discord.svelte")
@@ -157,10 +160,16 @@
 	{#if script}
 		<div class="mx-4 my-4 flex gap-2">
 			{#if script.access}
+				<!-- <select id="client" class="select w-44 hover:preset-tonal" bind:value={client}>
+					{#each clients as clnt, idx}
+						<option value={idx}>Client {clnt}</option>
+					{/each}
+				</select>
+ 				-->
 				{#await versionsPromise}
-					<select id="loading" class="select hover:preset-tonal"> Loading... </select>
+					<select id="loading" class="select w-44 hover:preset-tonal"> Loading... </select>
 				{:then versions}
-					<select id="revision" class="select hover:preset-tonal" bind:value={selected}>
+					<select id="revision" class="select w-44 hover:preset-tonal" bind:value={revision}>
 						{#each versions as version, idx}
 							<option value={idx}>Revision {version.revision}</option>
 						{/each}

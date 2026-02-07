@@ -6,6 +6,5 @@ export const load = async ({ parent }) => {
 	if (session && profile) {
 		goto("/scripts")
 	}
-
 	return
 }
