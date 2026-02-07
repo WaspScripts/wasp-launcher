@@ -9,6 +9,7 @@
 	import { fetch } from "@tauri-apps/plugin-http"
 	import { revealItemInDir } from "@tauri-apps/plugin-opener"
 
+	const { settings, sidebar } = $derived(page.data)
 	const session: Session = $derived(page.data.session)
 	const path: string = $derived(page.data.simbaPath + "//Plugins")
 
@@ -62,26 +63,33 @@
 		await invoke("run_executable", { exe, args: ["", data.simba, wasplib, "", "", refresh_token] })
 	}
 
-	let open = $state(true)
+	// svelte-ignore state_referenced_locally
+	let currentSidebar = $state(sidebar) as boolean
+
+	async function toggleSidebar() {
+		currentSidebar = !sidebar
+		document.documentElement.classList.toggle("sidebar")
+		await settings.set("sidebar", currentSidebar)
+	}
 </script>
 
 <div class="flex h-full flex-col justify-between gap-1 border-l border-surface-500 px-1">
 	<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 		<Tooltip.Trigger
-			onclick={() => (open = !open)}
+			onclick={toggleSidebar}
 			class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 		>
-			<span class="duration-400" class:rotate-180={!open}>
+			<span class="duration-400" class:rotate-180={!currentSidebar}>
 				<PanelLeftOpen size="20" />
 			</span>
-			{#if open}
+			{#if currentSidebar}
 				Collapse
 			{/if}
 		</Tooltip.Trigger>
 		<Portal>
 			<Tooltip.Positioner>
 				<Tooltip.Content class="card preset-filled p-4"
-					>{#if open}
+					>{#if currentSidebar}
 						Collapse
 					{:else}Expand{/if}</Tooltip.Content
 				>
@@ -97,7 +105,7 @@
 				data-sveltekit-preload-data="false"
 			>
 				🎮
-				{#if open}
+				{#if currentSidebar}
 					Running
 				{/if}
 			</a>
@@ -117,7 +125,7 @@
 						class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 						onclick={() => execute("devsimba", $devUpdatesStore ? "latest" : "none")}
 					>
-						🧪 {#if open}
+						🧪 {#if currentSidebar}
 							Dev Simba
 						{/if}
 					</button>
@@ -135,7 +143,7 @@
 						class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 						onclick={async () => await revealItemInDir($devPathStore + "//Plugins")}
 					>
-						💻 {#if open}
+						💻 {#if currentSidebar}
 							Dev Folder
 						{/if}
 					</button>
@@ -156,7 +164,7 @@
 					onclick={() => execute("simba", "latest")}
 				>
 					🦁
-					{#if open}
+					{#if currentSidebar}
 						Simba
 					{/if}
 				</button>
@@ -175,7 +183,7 @@
 					onclick={async () => await revealItemInDir(path)}
 				>
 					📁
-					{#if open}
+					{#if currentSidebar}
 						Simba Folder
 					{/if}
 				</button>
@@ -194,7 +202,7 @@
 					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 					data-sveltekit-preload-data="false"
 				>
-					⚙️ {#if open}
+					⚙️ {#if currentSidebar}
 						Settings
 					{/if}
 				</a>

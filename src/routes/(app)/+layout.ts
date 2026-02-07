@@ -1,7 +1,5 @@
 import { goto } from "$app/navigation"
 import { getData } from "$lib/supabase"
-export const prerender = true
-export const ssr = false
 
 export const load = async ({ parent, params: { slug } }) => {
 	const { session, profile } = await parent()

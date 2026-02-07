@@ -1,6 +1,4 @@
 import { goto } from "$app/navigation"
-export const prerender = true
-export const ssr = false
 
 export const load = async ({ parent }) => {
 	const { scripts, script } = await parent()

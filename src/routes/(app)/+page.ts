@@ -4,5 +4,5 @@ export const load = async ({ parent }) => {
 	const { session, profile } = await parent()
 	console.log("🔥Loading root page!")
 	if (!session || !profile) goto("/auth")
-	goto("/scripts")
+	await goto("/scripts")
 }

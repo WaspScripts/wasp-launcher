@@ -23,7 +23,11 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	])
 
 	const settings = promises[1]
-	const themeSettings = await Promise.all([settings.get("dark"), settings.get("theme")])
+	const settingValues = await Promise.all([
+		settings.get("dark"),
+		settings.get("theme"),
+		settings.get("sidebar")
+	])
 
 	devPathStore.set(promises[4])
 	devModeStore.set(promises[5])
@@ -35,7 +39,8 @@ export const load = async ({ depends, url: { searchParams } }) => {
 		profile: promises[2],
 		simbaPath: promises[3],
 		settings,
-		dark: (themeSettings[0] as boolean) ?? true,
-		theme: (themeSettings[1] as string) ?? "wasp"
+		dark: (settingValues[0] as boolean) ?? true,
+		theme: (settingValues[1] as string) ?? "wasp",
+		sidebar: (settingValues[2] as boolean) ?? true
 	}
 }

@@ -11,6 +11,9 @@ declare namespace App {
 		user: User
 		profile: ProfileBase
 		settings: Store
+		dark: boolean
+		theme: string
+		sidebar: boolean
 	}
 
 	interface PageState {
@@ -21,6 +24,7 @@ declare namespace App {
 		settings: Store
 		dark: boolean
 		theme: string
+		sidebar: boolean
 	}
 	// interface Error {}
 	// interface Platform {}
