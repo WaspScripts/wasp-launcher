@@ -1,3 +1,4 @@
+mod client;
 mod commands;
 mod server;
 mod simba;
@@ -159,7 +160,8 @@ pub fn run() {
             commands::delete_assets,
             commands::delete_configs,
             commands::get_plugin_version,
-            commands::reinstall_plugins
+            commands::reinstall_plugins,
+            commands::list_clients
         ])
         .run(tauri::generate_context!())
         .expect("Error while running wasp-launcher");

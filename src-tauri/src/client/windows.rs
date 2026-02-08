@@ -1,11 +1,21 @@
-use windows::Win32::Foundation::CloseHandle;
-use windows::Win32::Foundation::{BOOL, HWND, LPARAM};
+use windows::core::BOOL;
+use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM};
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetClassNameW, GetWindowThreadProcessId,
+    EnumChildWindows, EnumWindows, GetClassNameW, GetWindowThreadProcessId,
 };
+
+struct WindowMatch {
+    pid: u32,
+    hwnd: HWND,
+}
+
+struct EnumContext {
+    target_pid: u32,
+    matches: Vec<WindowMatch>,
+}
 
 pub fn list_processes() -> windows::core::Result<()> {
     unsafe {
@@ -15,11 +25,19 @@ pub fn list_processes() -> windows::core::Result<()> {
 
         if Process32FirstW(snapshot, &mut entry).is_ok() {
             loop {
-                let name = String::from_utf16_lossy(&entry.szExeFile)
-                    .trim_matches('\0')
-                    .to_string();
+                let mut context = EnumContext {
+                    target_pid: entry.th32ProcessID,
+                    matches: Vec::new(),
+                };
 
-                println!("PID: {} | Name: {}", entry.th32ProcessID, name);
+                let _ = EnumWindows(
+                    Some(enum_window_callback),
+                    LPARAM(&mut context as *mut EnumContext as isize),
+                );
+
+                for window in context.matches {
+                    println!("MATCH -> PID: {} | HWND: {:?}", window.pid, window.hwnd);
+                }
 
                 if Process32NextW(snapshot, &mut entry).is_err() {
                     break;
@@ -31,31 +49,47 @@ pub fn list_processes() -> windows::core::Result<()> {
     }
 }
 
-pub fn list_windows(target_pid: u32) -> windows::core::Result<()> {
-    unsafe {
-        EnumWindows(Some(enum_window_callback), LPARAM(target_pid as isize))?;
-    }
-    Ok(())
-}
-
 extern "system" fn enum_window_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
     unsafe {
-        let target_pid = lparam.0 as u32;
+        let context = &mut *(lparam.0 as *mut EnumContext);
         let mut process_id = 0;
 
-        // Get the PID of the process that owns this window
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
 
-        if process_id == target_pid {
-            // Buffer for the class name (256 is usually plenty)
-            let mut class_name = [0u16; 256];
-            let len = GetClassNameW(hwnd, &mut class_name);
+        if process_id == context.target_pid {
+            // 1. Check if the top-level window itself is the canvas
+            check_and_add_if_match(hwnd, context);
 
-            if len > 0 {
-                let name = String::from_utf16_lossy(&class_name[..len as usize]);
-                println!("Window Handle: {:?} | Class Name: {}", hwnd, name);
-            }
+            // 2. Scan all children of this window
+            let _ = EnumChildWindows(
+                Some(hwnd),
+                Some(enum_child_callback),
+                LPARAM(context as *mut EnumContext as isize),
+            );
         }
     }
-    BOOL(1) // Return 1 to continue enumerating other windows
+    BOOL(1)
+}
+
+extern "system" fn enum_child_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    unsafe {
+        let context = &mut *(lparam.0 as *mut EnumContext);
+        check_and_add_if_match(hwnd, context);
+    }
+    BOOL(1)
+}
+
+unsafe fn check_and_add_if_match(hwnd: HWND, context: &mut EnumContext) {
+    let mut class_name = [0u16; 256];
+    let len = GetClassNameW(hwnd, &mut class_name);
+
+    if len > 0 {
+        let name = String::from_utf16_lossy(&class_name[..len as usize]);
+        if name == "SunAwtCanvas" {
+            context.matches.push(WindowMatch {
+                pid: context.target_pid,
+                hwnd,
+            });
+        }
+    }
 }

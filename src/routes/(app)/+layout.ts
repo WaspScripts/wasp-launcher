@@ -10,6 +10,7 @@ export const load = async ({ parent, params: { slug } }) => {
 	}
 
 	const scripts = await getData(profile)
+	if (scripts.length === 0) await goto("/auth")
 	const script = scripts.find((script) => script.id === slug)
 
 	return { scripts, script }

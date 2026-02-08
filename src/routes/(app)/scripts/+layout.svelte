@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { scriptStages } from "$lib/utils"
+	import ScriptStage from "$lib/components/ScriptStage.svelte"
 
 	let { data, children } = $props()
 	const scripts = $derived(data.scripts!)
@@ -47,13 +47,7 @@
 					onclick={() => (selected = idx)}
 				>
 					{script.title}
-					{#if script.metadata.stage !== "stable"}
-						<div
-							class="my-auto h-fit w-fit rounded-md preset-outlined-surface-600-400 preset-filled-surface-500 px-1 whitespace-nowrap"
-						>
-							{scriptStages[script.metadata.stage].icon + scriptStages[script.metadata.stage].name}
-						</div>
-					{/if}
+					<ScriptStage stage={script.metadata.stage} size={12} styles={"px-1 text-xs lg:text-sm"} />
 				</a>
 			</li>
 		{/each}

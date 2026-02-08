@@ -1,7 +1,6 @@
 <script lang="ts">
+	import ScriptStage from "$lib/components/ScriptStage.svelte"
 	import type { TScriptStages } from "$lib/types/collection"
-	import { scriptStages } from "$lib/utils"
-	import { Portal, Tooltip } from "@skeletonlabs/skeleton-svelte"
 
 	const {
 		children,
@@ -30,28 +29,11 @@
 			{description ?? "Loading..."}
 		</h2>
 
-		{#if stage !== "stable"}
-			<Tooltip positioning={{ placement: "bottom" }}>
-				<Tooltip.Trigger
-					class="mx-auto my-2 w-fit cursor-default rounded-md preset-outlined-surface-600-400 preset-filled-surface-500 px-2 py-1 hover:preset-tonal"
-				>
-					{scriptStages[stage].icon + scriptStages[stage].name}
-				</Tooltip.Trigger>
-				<Portal>
-					<Tooltip.Positioner>
-						<Tooltip.Content class="card preset-filled-surface-950-50 p-2">
-							<span>
-								This script is in <b>{scriptStages[stage].name}</b> and might not be stable!
-							</span>
-							<Tooltip.Arrow
-								class="[--arrow-background:var(--color-surface-950-50)] [--arrow-size:--spacing(2)]"
-							>
-								<Tooltip.ArrowTip />
-							</Tooltip.Arrow>
-						</Tooltip.Content>
-					</Tooltip.Positioner>
-				</Portal>
-			</Tooltip>
-		{/if}
+		<ScriptStage
+			{stage}
+			size={20}
+			tooltip={true}
+			styles={"mx-auto px-2 py-1 text-sm lg:text-base"}
+		/>
 	</div>
 </header>

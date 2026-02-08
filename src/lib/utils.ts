@@ -53,17 +53,3 @@ export function replaceScriptContent(
 
 	return result
 }
-
-interface NameValueIcon {
-	name: string
-	value: string
-	icon: string
-}
-
-export const scriptStages: Record<TScriptStages, NameValueIcon> = {
-	prototype: { name: "Prototype", value: "prototype", icon: "💡" },
-	alpha: { name: "Alpha", value: "alpha", icon: "🧪" },
-	beta: { name: "Beta", value: "beta", icon: "🔬" },
-	stable: { name: "Stable", value: "stable", icon: "🤖" },
-	archived: { name: "Archived", value: "archived", icon: "💀" }
-}

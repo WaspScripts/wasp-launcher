@@ -2,12 +2,18 @@
 	import { page } from "$app/state"
 	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 	import { supabase } from "$lib/supabase"
-	import { PanelLeftOpen } from "@lucide/svelte"
 	import { Tooltip, Portal } from "@skeletonlabs/skeleton-svelte"
 	import type { Session } from "@supabase/supabase-js"
 	import { invoke } from "@tauri-apps/api/core"
 	import { fetch } from "@tauri-apps/plugin-http"
 	import { revealItemInDir } from "@tauri-apps/plugin-opener"
+	import CircleArrowRight from "@lucide/svelte/icons/circle-arrow-right"
+	import Gamepad2 from "@lucide/svelte/icons/gamepad-2"
+	import TestTubeDiagonal from "@lucide/svelte/icons/test-tube-diagonal"
+	import FolderCode from "@lucide/svelte/icons/folder-code"
+	import PawPrint from "@lucide/svelte/icons/paw-print"
+	import FolderClosed from "@lucide/svelte/icons/folder-closed"
+	import Settings from "@lucide/svelte/icons/settings"
 
 	const { settings, sidebar } = $derived(page.data)
 	const session: Session = $derived(page.data.session)
@@ -77,10 +83,10 @@
 	<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 		<Tooltip.Trigger
 			onclick={toggleSidebar}
-			class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+			class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 		>
 			<span class="duration-400" class:rotate-180={!currentSidebar}>
-				<PanelLeftOpen size="20" />
+				<CircleArrowRight size={20} />
 			</span>
 			{#if currentSidebar}
 				Collapse
@@ -88,11 +94,9 @@
 		</Tooltip.Trigger>
 		<Portal>
 			<Tooltip.Positioner>
-				<Tooltip.Content class="card preset-filled p-4"
-					>{#if currentSidebar}
-						Collapse
-					{:else}Expand{/if}</Tooltip.Content
-				>
+				<Tooltip.Content class="card preset-filled p-4">
+					{#if currentSidebar}Collapse{:else}Expand{/if}
+				</Tooltip.Content>
 			</Tooltip.Positioner>
 		</Portal>
 	</Tooltip>
@@ -101,10 +105,10 @@
 		<Tooltip.Trigger>
 			<a
 				href={runningBtn}
-				class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+				class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 				data-sveltekit-preload-data="false"
 			>
-				🎮
+				<Gamepad2 size={20} />
 				{#if currentSidebar}
 					Running
 				{/if}
@@ -120,15 +124,14 @@
 	<div class="flex h-full flex-col justify-end gap-1 px-1">
 		{#if $devModeStore}
 			<Tooltip positioning={{ placement: "top" }} openDelay={700}>
-				<Tooltip.Trigger>
-					<button
-						class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
-						onclick={() => execute("devsimba", $devUpdatesStore ? "latest" : "none")}
-					>
-						🧪 {#if currentSidebar}
-							Dev Simba
-						{/if}
-					</button>
+				<Tooltip.Trigger
+					class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+					onclick={() => execute("devsimba", $devUpdatesStore ? "latest" : "none")}
+				>
+					<TestTubeDiagonal size={20} />
+					{#if currentSidebar}
+						Dev Simba
+					{/if}
 				</Tooltip.Trigger>
 				<Portal>
 					<Tooltip.Positioner>
@@ -138,15 +141,14 @@
 			</Tooltip>
 
 			<Tooltip positioning={{ placement: "top" }} openDelay={700}>
-				<Tooltip.Trigger>
-					<button
-						class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
-						onclick={async () => await revealItemInDir($devPathStore + "//Plugins")}
-					>
-						💻 {#if currentSidebar}
-							Dev Folder
-						{/if}
-					</button>
+				<Tooltip.Trigger
+					class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+					onclick={async () => await revealItemInDir($devPathStore + "//Plugins")}
+				>
+					<FolderCode size={20} />
+					{#if currentSidebar}
+						Dev Folder
+					{/if}
 				</Tooltip.Trigger>
 				<Portal>
 					<Tooltip.Positioner>
@@ -158,16 +160,14 @@
 			</Tooltip>
 		{/if}
 		<Tooltip positioning={{ placement: "top" }} openDelay={700}>
-			<Tooltip.Trigger>
-				<button
-					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
-					onclick={() => execute("simba", "latest")}
-				>
-					🦁
-					{#if currentSidebar}
-						Simba
-					{/if}
-				</button>
+			<Tooltip.Trigger
+				class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+				onclick={() => execute("simba", "latest")}
+			>
+				<PawPrint size={20} />
+				{#if currentSidebar}
+					Simba
+				{/if}
 			</Tooltip.Trigger>
 			<Portal>
 				<Tooltip.Positioner>
@@ -177,16 +177,14 @@
 		</Tooltip>
 
 		<Tooltip positioning={{ placement: "top" }} openDelay={700}>
-			<Tooltip.Trigger>
-				<button
-					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
-					onclick={async () => await revealItemInDir(path)}
-				>
-					📁
-					{#if currentSidebar}
-						Simba Folder
-					{/if}
-				</button>
+			<Tooltip.Trigger
+				class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+				onclick={async () => await revealItemInDir(path)}
+			>
+				<FolderClosed size={20} />
+				{#if currentSidebar}
+					Simba Folder
+				{/if}
 			</Tooltip.Trigger>
 			<Portal>
 				<Tooltip.Positioner>
@@ -199,10 +197,11 @@
 			<Tooltip.Trigger>
 				<a
 					href={settingsBtn}
-					class="btn h-9 w-full preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
+					class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
 					data-sveltekit-preload-data="false"
 				>
-					⚙️ {#if currentSidebar}
+					<Settings size={20} />
+					{#if currentSidebar}
 						Settings
 					{/if}
 				</a>

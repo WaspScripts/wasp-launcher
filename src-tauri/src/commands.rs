@@ -17,8 +17,8 @@ use tauri_plugin_http::reqwest::Client;
 use tauri_plugin_store::StoreExt;
 
 use crate::{
-    server::handle_client, simba::ensure_simba_directories, simba::read_plugins_version,
-    simba::run_simba, simba::sync_plugins_repo, LauncherVariables,
+    client::list_processes, server::handle_client, simba::ensure_simba_directories,
+    simba::read_plugins_version, simba::run_simba, simba::sync_plugins_repo, LauncherVariables,
 };
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -354,5 +354,11 @@ pub async fn reinstall_plugins(
 
     let _ = sync_plugins_repo(&plugins_path).await;
 
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_clients() -> tauri::Result<()> {
+    let _ = list_processes();
     Ok(())
 }
