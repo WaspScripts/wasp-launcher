@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ScriptStage from "$lib/components/ScriptStage.svelte"
+	import { SearchIcon } from "@lucide/svelte"
 
 	let { data, children } = $props()
 	const scripts = $derived(data.scripts!)
@@ -24,12 +25,18 @@
 <aside
 	class="flex h-full max-w-96 min-w-44 flex-col gap-2 border-r border-surface-500 p-2 text-sm lg:min-w-64"
 >
-	<input
-		type="text"
-		placeholder="🔍 Search script..."
-		class="input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
-		bind:value={search}
-	/>
+	<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
+		<div class="ig-cell preset-tonal px-2">
+			<SearchIcon size={16} />
+		</div>
+		<input
+			type="text"
+			placeholder="Search script..."
+			class="input ig-input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
+			bind:value={search}
+		/>
+	</div>
+
 	<ul class="h-full w-full overflow-y-scroll">
 		{#each scripts as script, idx}
 			<li

@@ -12,13 +12,14 @@ use windows::Win32::UI::WindowsAndMessaging::{
 pub struct WindowMatch {
     pid: u32,
     hwnd: isize,
-    process_name: String,
+    name: String,
 }
 
 struct EnumContext {
     target_pid: u32,
     process_name: String,
     matches: Vec<WindowMatch>,
+    found: bool,
 }
 
 pub fn list_processes() -> Result<Vec<WindowMatch>, String> {
@@ -39,7 +40,9 @@ pub fn list_processes() -> Result<Vec<WindowMatch>, String> {
                     target_pid: entry.th32ProcessID,
                     process_name: process_name.clone(),
                     matches: Vec::new(),
+                    found: false,
                 };
+
                 let _ = EnumWindows(
                     Some(enum_window_callback),
                     LPARAM(&mut context as *mut EnumContext as isize),
@@ -67,13 +70,19 @@ extern "system" fn enum_window_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
 
         if process_id == context.target_pid {
-            check_and_add_if_match(hwnd, context);
+            if check_and_add_if_match(hwnd, context) {
+                return BOOL(0);
+            }
 
             let _ = EnumChildWindows(
                 Some(hwnd),
                 Some(enum_child_callback),
                 LPARAM(context as *mut EnumContext as isize),
             );
+
+            if context.found {
+                return BOOL(0);
+            }
         }
     }
     BOOL(1)
@@ -82,40 +91,45 @@ extern "system" fn enum_window_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
 extern "system" fn enum_child_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
     unsafe {
         let context = &mut *(lparam.0 as *mut EnumContext);
-        check_and_add_if_match(hwnd, context);
+        if check_and_add_if_match(hwnd, context) {
+            return BOOL(0);
+        }
     }
     BOOL(1)
 }
 
-unsafe fn check_and_add_if_match(hwnd: HWND, context: &mut EnumContext) {
+unsafe fn check_and_add_if_match(hwnd: HWND, context: &mut EnumContext) -> bool {
     let mut class_name = [0u16; 256];
     let len = GetClassNameW(hwnd, &mut class_name);
     if len == 0 {
-        return;
+        return false;
     }
 
     let name = String::from_utf16_lossy(&class_name[..len as usize]);
     if name != "SunAwtCanvas" {
-        return;
+        return false;
     }
 
     let mut rect = RECT::default();
     if GetWindowRect(hwnd, &mut rect).is_err() {
-        return;
+        return false;
     }
 
     let width = rect.right - rect.left;
     let height = rect.bottom - rect.top;
 
     if width <= 100 || height <= 100 {
-        return;
+        return false;
     }
 
     context.matches.push(WindowMatch {
         pid: context.target_pid,
         hwnd: hwnd.0 as isize,
-        process_name: context.process_name.clone(),
+        name: context.process_name.clone(),
     });
+
+    context.found = true;
+    true
 }
 
 fn string_from_u16_slice(slice: &[u16]) -> String {

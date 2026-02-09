@@ -6,6 +6,7 @@
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
 	import { fetch } from "@tauri-apps/plugin-http"
+	import { RefreshCw } from "@lucide/svelte"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -104,12 +105,18 @@
 		await invoke("run_executable", { exe, args })
 	}
 
-	/* const clients = ["client 0", "client 1", "client 2"]
-	let client = $state(0) */
+	let client = $state(-1)
 
 	let lazyGithub = import("./Footer/GitHub.svelte")
 	let lazyDiscord = import("./Footer/Discord.svelte")
 	let lazyYouTube = import("./Footer/YouTube.svelte")
+
+	interface ClientWindow {
+		pid: number
+		hwnd: number
+		name: string
+	}
+	let clientsPromise = $state(invoke("list_clients") as Promise<ClientWindow[]>)
 </script>
 
 <footer
@@ -160,21 +167,38 @@
 	{#if script}
 		<div class="mx-4 my-4 flex gap-2">
 			{#if script.access}
-				<!-- <select id="client" class="select w-44 hover:preset-tonal" bind:value={client}>
-					{#each clients as clnt, idx}
-						<option value={idx}>Client {clnt}</option>
-					{/each}
-				</select>
- 				-->
-				{#await versionsPromise}
-					<select id="loading" class="select w-44 hover:preset-tonal"> Loading... </select>
-				{:then versions}
-					<select id="revision" class="select w-44 hover:preset-tonal" bind:value={revision}>
+				<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
+					<button
+						class="ig-cell preset-tonal"
+						onclick={() => {
+							client = -1
+							clientsPromise = invoke("list_clients") as Promise<ClientWindow[]>
+						}}
+					>
+						<RefreshCw size={16} class="duration-300 hover:rotate-180" />
+					</button>
+
+					<select
+						id="client"
+						class="select ig-select w-48 rounded-l-none hover:preset-tonal"
+						bind:value={client}
+					>
+						<option value={-1} disabled selected>Select a client (soon)</option>
+						{#await clientsPromise then clients}
+							{#each clients as clnt, idx}
+								<option value={idx}>{clnt.name}</option>
+							{/each}
+						{/await}
+					</select>
+				</div>
+
+				<select id="revision" class="select w-44 hover:preset-tonal" bind:value={revision}>
+					{#await versionsPromise then versions}
 						{#each versions as version, idx}
 							<option value={idx}>Revision {version.revision}</option>
 						{/each}
-					</select>
-				{/await}
+					{/await}
+				</select>
 
 				<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
 					<Tooltip.Trigger>
