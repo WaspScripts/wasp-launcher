@@ -2,6 +2,7 @@
 mod windows;
 #[cfg(target_os = "windows")]
 pub use self::windows::list_processes;
+pub use self::windows::WindowMatch;
 
 #[cfg(target_os = "linux")]
 mod linux;
