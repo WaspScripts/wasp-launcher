@@ -1,10 +1,10 @@
 use windows::core::BOOL;
-use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM};
+use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, RECT};
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, EnumWindows, GetClassNameW, GetWindowThreadProcessId,
+    EnumChildWindows, EnumWindows, GetClassNameW, GetWindowRect, GetWindowThreadProcessId,
 };
 
 struct WindowMatch {
@@ -83,13 +83,30 @@ unsafe fn check_and_add_if_match(hwnd: HWND, context: &mut EnumContext) {
     let mut class_name = [0u16; 256];
     let len = GetClassNameW(hwnd, &mut class_name);
 
-    if len > 0 {
-        let name = String::from_utf16_lossy(&class_name[..len as usize]);
-        if name == "SunAwtCanvas" {
-            context.matches.push(WindowMatch {
-                pid: context.target_pid,
-                hwnd,
-            });
-        }
+    if len == 0 {
+        return;
     }
+
+    let name = String::from_utf16_lossy(&class_name[..len as usize]);
+    if name != "SunAwtCanvas" {
+        return;
+    }
+
+    println!("{:?}", hwnd);
+    let mut rect = RECT::default();
+    if GetWindowRect(hwnd, &mut rect).is_err() {
+        return;
+    }
+
+    let width = rect.right - rect.left;
+    let height = rect.bottom - rect.top;
+
+    if width <= 100 || height <= 100 {
+        return;
+    }
+
+    context.matches.push(WindowMatch {
+        pid: context.target_pid,
+        hwnd,
+    });
 }
