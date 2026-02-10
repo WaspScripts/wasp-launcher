@@ -17,7 +17,7 @@ use tauri_plugin_http::reqwest::Client;
 use tauri_plugin_store::StoreExt;
 
 use crate::{
-    client::{list_processes, WindowMatch},
+    client::{bring_window_to_top, list_processes, WindowMatch},
     server::handle_client,
     simba::{ensure_simba_directories, read_plugins_version, run_simba, sync_plugins_repo},
     LauncherVariables,
@@ -362,4 +362,13 @@ pub async fn reinstall_plugins(
 #[tauri::command]
 pub async fn list_clients() -> Result<Vec<WindowMatch>, String> {
     list_processes()
+}
+
+#[tauri::command]
+pub async fn show_client(hwnd: isize) -> Result<(), String> {
+    if bring_window_to_top(hwnd) {
+        Ok(())
+    } else {
+        Err("Failed to bring window to front. The handle might be invalid.".to_string())
+    }
 }

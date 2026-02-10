@@ -6,7 +6,7 @@
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
 	import { fetch } from "@tauri-apps/plugin-http"
-	import { RefreshCw } from "@lucide/svelte"
+	import { RefreshCw, SquaresSubtract } from "@lucide/svelte"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -169,13 +169,26 @@
 			{#if script.access}
 				<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
 					<button
-						class="ig-cell preset-tonal"
+						class="ig-cell hover:preset-tonal"
 						onclick={() => {
 							client = -1
 							clientsPromise = invoke("list_clients") as Promise<ClientWindow[]>
 						}}
 					>
 						<RefreshCw size={16} class="duration-300 hover:rotate-180" />
+					</button>
+
+					<button
+						class="ig-cell enabled:hover:preset-tonal"
+						disabled={client < 0}
+						onclick={async () => {
+							if (client < 0) return
+							const clients = await clientsPromise
+							if (client > clients.length - 1) return
+							await invoke("show_client", { hwnd: clients[client].hwnd })
+						}}
+					>
+						<SquaresSubtract size={16} />
 					</button>
 
 					<select
@@ -186,7 +199,9 @@
 						<option value={-1} disabled selected>Select a client (soon)</option>
 						{#await clientsPromise then clients}
 							{#each clients as clnt, idx}
-								<option value={idx}>{clnt.name}</option>
+								<option value={idx}>
+									{clnt.name}
+								</option>
 							{/each}
 						{/await}
 					</select>

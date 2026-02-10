@@ -5,7 +5,9 @@ use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, EnumWindows, GetClassNameW, GetWindowRect, GetWindowThreadProcessId,
+    EnumChildWindows, EnumWindows, GetAncestor, GetClassNameW, GetWindowRect,
+    GetWindowThreadProcessId, IsIconic, SetForegroundWindow, ShowWindow, GA_ROOT, SW_RESTORE,
+    SW_SHOW,
 };
 
 #[derive(Debug, Serialize, Clone)]
@@ -135,4 +137,23 @@ unsafe fn check_and_add_if_match(hwnd: HWND, context: &mut EnumContext) -> bool 
 fn string_from_u16_slice(slice: &[u16]) -> String {
     let len = slice.iter().position(|&c| c == 0).unwrap_or(slice.len());
     String::from_utf16_lossy(&slice[..len])
+}
+
+pub fn bring_window_to_top(handle: isize) -> bool {
+    let hwnd_child = HWND(handle as *mut core::ffi::c_void);
+
+    unsafe {
+        let hwnd_root = GetAncestor(hwnd_child, GA_ROOT);
+        if hwnd_root.0.is_null() {
+            return false;
+        }
+
+        if IsIconic(hwnd_root).as_bool() {
+            let _ = ShowWindow(hwnd_root, SW_RESTORE);
+        } else {
+            let _ = ShowWindow(hwnd_root, SW_SHOW);
+        }
+
+        SetForegroundWindow(hwnd_root).as_bool()
+    }
 }
