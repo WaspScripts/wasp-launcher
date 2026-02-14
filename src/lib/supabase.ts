@@ -29,9 +29,13 @@ export async function refreshSession() {
 }
 
 export async function getSession() {
-	const {
-		data: { session }
-	} = await supabase.auth.getSession()
+	const promises = await Promise.all([
+		supabase.auth.getUser(), supabase.auth.getSession()
+	])
+	const { data: {user} } = promises[0]
+	if (!user) return null
+
+	const { data: { session } } = promises[1]
 
 	return session
 }
