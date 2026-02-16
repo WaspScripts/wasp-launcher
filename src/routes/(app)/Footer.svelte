@@ -228,7 +228,6 @@
 							class="hover:preset-filled-primary-800 btn preset-filled-primary-500"
 							onclick={async () => {
 								const id = await execute()
-								await goto("/running/" + id)
 							}}
 						>
 							Run
