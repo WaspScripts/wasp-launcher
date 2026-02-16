@@ -3,7 +3,6 @@ use std::{
     io::Write,
     net::TcpListener,
     path::PathBuf,
-    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -12,14 +11,17 @@ use std::{
 };
 
 use serde_json::json;
-use tauri::{Manager, State};
+use tauri::{ipc::Channel, Emitter, Manager, State};
 use tauri_plugin_http::reqwest::Client;
 use tauri_plugin_store::StoreExt;
 
 use crate::{
     client::{bring_window_to_top, list_processes, WindowMatch},
     server::handle_client,
-    simba::{ensure_simba_directories, read_plugins_version, run_simba, sync_plugins_repo},
+    simba::{
+        ensure_simba_directories, read_plugins_version, run_simba, run_simba_script,
+        sync_plugins_repo,
+    },
     LauncherVariables,
 };
 
@@ -67,16 +69,11 @@ pub fn set_dev_updates(
 }
 
 #[tauri::command]
-pub fn get_executable_path(
-    launcher_vars: State<'_, Mutex<LauncherVariables>>,
-    exe: String,
-) -> String {
-    let paths = launcher_vars.lock().unwrap();
+pub fn get_executable_path(launcher: State<'_, Mutex<LauncherVariables>>, exe: String) -> String {
+    let paths = launcher.lock().unwrap();
     match exe.as_str() {
         "simba" => paths.simba.to_str().unwrap().to_string(),
         "devsimba" => paths.devsimba.to_str().unwrap().to_string(),
-        "runelite" => paths.runelite.to_str().unwrap().to_string(),
-        "osclient" => paths.osclient.to_str().unwrap().to_string(),
         _ => paths.simba.to_str().unwrap().to_string(),
     }
 }
@@ -92,8 +89,6 @@ pub fn set_executable_path(
     match exe.as_str() {
         "simba" => paths.simba = PathBuf::from(path.clone()),
         "devsimba" => paths.devsimba = PathBuf::from(path.clone()),
-        "runelite" => paths.runelite = PathBuf::from(path.clone()),
-        "osclient" => paths.osclient = PathBuf::from(path.clone()),
         _ => {}
     }
 
@@ -220,21 +215,18 @@ pub async fn run_executable(
     exe: String,
     args: Vec<String>,
 ) -> Result<String, String> {
-    let args_clone = args.clone();
-
     let path = {
         let paths = launcher_vars.lock().unwrap();
         match exe.as_str() {
             "simba" => paths.simba.clone(),
             "devsimba" => paths.devsimba.clone(),
-            "runelite" => paths.runelite.clone(),
-            "osclient" => paths.osclient.clone(),
             _ => paths.simba.clone(),
         }
     };
 
     if exe == "simba" {
         run_simba(path, args).await;
+        Ok("Process started successfully".to_string())
     } else if exe == "devsimba" {
         let diff_dirs = {
             let paths = launcher_vars.lock().unwrap();
@@ -250,14 +242,117 @@ pub async fn run_executable(
         };
 
         run_simba(path, args).await;
+        Ok("Process started successfully".to_string())
     } else {
-        Command::new(path)
-            .args(args_clone)
-            .spawn()
-            .map_err(|err| err.to_string())?;
+        Err("Unrecognized executable. Only \"simba\" or \"devsimba\" is allowed.".to_string())
     }
+}
+
+#[tauri::command]
+pub async fn run_script(
+    app: tauri::AppHandle,
+    launcher: State<'_, Mutex<LauncherVariables>>,
+    args: Vec<String>,
+    channel: Channel<String>,
+) -> Result<String, String> {
+    let (simba_path, hwnd) = {
+        let guard = launcher.lock().unwrap();
+        match &guard.client {
+            Some(client) => (guard.simba.clone(), client.hwnd),
+            None => return Err("Client is null".to_string()),
+        }
+    };
+
+    let id = channel.id();
+    let process = run_simba_script(simba_path, hwnd, args, channel).await?;
+
+    let shared_process = Arc::new(Mutex::new(Some(process)));
+
+    let guard = launcher.lock().unwrap();
+    guard
+        .scripts
+        .lock()
+        .unwrap()
+        .insert(id, shared_process.clone());
+
+    let app_clone = app.clone();
+
+    std::thread::spawn(move || {
+        loop {
+            // 1. Scope to limit how long we hold the lock
+            let status = {
+                let mut inner_guard = shared_process.lock().unwrap();
+                if let Some(child) = inner_guard.as_mut() {
+                    child.try_wait()
+                } else {
+                    return;
+                }
+            };
+
+            match status {
+                Ok(Some(exit_status)) => {
+                    println!("Process {} exited with status: {}", id, exit_status);
+
+                    if let Some(launcher_state) = app_clone.try_state::<Mutex<LauncherVariables>>()
+                    {
+                        let guard = launcher_state.lock().unwrap();
+                        guard.scripts.lock().unwrap().remove(&id);
+                    }
+
+                    let _ = app_clone.emit("process-finished", id);
+                    break;
+                }
+                Ok(None) => {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                }
+                Err(e) => {
+                    println!("Error checking process status: {}", e);
+                    break;
+                }
+            }
+        }
+    });
 
     Ok("Process started successfully".to_string())
+}
+
+#[tauri::command]
+pub async fn kill_script(
+    app: tauri::AppHandle,
+    launcher: tauri::State<'_, Mutex<LauncherVariables>>,
+    id: u32,
+) -> Result<String, String> {
+    let handle = {
+        let launcher_guard = launcher.lock().unwrap();
+        let scripts_guard = launcher_guard.scripts.lock().unwrap();
+        scripts_guard.get(&id).cloned()
+    };
+
+    if let Some(shared_process) = handle {
+        let mut process_guard = shared_process.lock().unwrap();
+
+        if let Some(mut child) = process_guard.take() {
+            let result = child.kill().map_err(|e| e.to_string());
+
+            let launcher_guard = launcher.lock().unwrap();
+            launcher_guard.scripts.lock().unwrap().remove(&id);
+            let _ = app.emit("process-finished", id);
+
+            match result {
+                Ok(_) => Ok(format!("Process {} killed", id)),
+                Err(e) => Err(format!("Failed to kill: {}", e)),
+            }
+        } else {
+            Err(format!("Process {} is already stopping or finished", id))
+        }
+    } else {
+        Err(format!("No active script found for ID {}", id))
+    }
+}
+
+#[tauri::command]
+pub async fn get_running_scripts() -> Result<(), String> {
+    Ok(())
 }
 
 #[tauri::command]
@@ -363,10 +458,27 @@ pub async fn list_clients() -> Result<Vec<WindowMatch>, String> {
 }
 
 #[tauri::command]
-pub async fn show_client(hwnd: isize) -> Result<(), String> {
-    if bring_window_to_top(hwnd) {
-        Ok(())
-    } else {
-        Err("Failed to bring window to front. The handle might be invalid.".to_string())
+pub async fn set_client(
+    launcher: State<'_, Mutex<LauncherVariables>>,
+    client: Option<WindowMatch>,
+) -> tauri::Result<()> {
+    let mut launcher = launcher.lock().unwrap();
+    launcher.client = client;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn show_client(launcher: State<'_, Mutex<LauncherVariables>>) -> Result<(), String> {
+    let launcher = launcher.lock().unwrap();
+    match &launcher.client {
+        Some(client) => {
+            let hwnd = client.hwnd;
+            if bring_window_to_top(hwnd) {
+                Ok(())
+            } else {
+                Err("Failed to bring window to front. The handle might be invalid.".to_string())
+            }
+        }
+        None => Err("Client is null".to_string()),
     }
 }

@@ -3,7 +3,13 @@ mod commands;
 mod server;
 mod simba;
 
-use std::{env, path::PathBuf, sync::Mutex};
+use std::{
+    collections::HashMap,
+    env,
+    path::PathBuf,
+    process::Child,
+    sync::{Arc, Mutex},
+};
 
 use serde_json::json;
 use tauri::Manager;
@@ -12,14 +18,16 @@ use tauri_plugin_store::StoreExt;
 use tauri_plugin_cli::CliExt;
 use tauri_plugin_updater::UpdaterExt;
 
+use crate::client::WindowMatch;
+
 #[derive(Default)]
 struct LauncherVariables {
     devmode: bool,
     simba: PathBuf,
     devsimba: PathBuf,
-    runelite: PathBuf,
-    osclient: PathBuf,
+    client: Option<WindowMatch>,
     dev_updates: bool,
+    scripts: Mutex<HashMap<u32, Arc<Mutex<Option<Child>>>>>,
 }
 
 async fn update_launcher(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
@@ -52,7 +60,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
@@ -82,10 +90,6 @@ pub fn run() {
                 .app_local_data_dir()
                 .expect("Local Data Dir doesn't exist on this system");
 
-            let program_files: PathBuf = env::var("PROGRAMFILES(X86)")
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| local_data.clone());
-
             let paths: serde_json::Value = settings.get("paths").unwrap_or_else(|| {
                 let empty = json!({});
                 settings.set("paths", empty.clone());
@@ -109,14 +113,6 @@ pub fn run() {
                 let _ = simba::sync_plugins_repo(&plugins_path).await;
             });
 
-            let runelite_default = app_paths
-                .local_data_dir()
-                .expect("Local Data Dir doesn't exist on this system")
-                .join("RuneLite\\RuneLite.exe");
-
-            let osclient_default = program_files
-                .join("Jagex Launcher\\Games\\Old School RuneScape\\Client\\osclient.exe");
-
             let devmode: bool = match settings.get("devmode") {
                 Some(value) => value.as_bool().unwrap_or(false),
                 None => {
@@ -133,13 +129,15 @@ pub fn run() {
                 }
             };
 
+            settings.close_resource();
+
             app.manage(Mutex::new(LauncherVariables {
                 simba: simba_path.clone(),
                 devmode: devmode,
                 devsimba: get_path("devsimba", simba_path),
-                runelite: get_path("runelite", runelite_default),
-                osclient: get_path("osclient", osclient_default),
+                client: None,
                 dev_updates: dev_updates,
+                scripts: Mutex::new(HashMap::new()),
             }));
 
             let _ = window.set_background_color(Some([25, 25, 25].into()));
@@ -153,6 +151,8 @@ pub fn run() {
             commands::get_executable_path,
             commands::set_executable_path,
             commands::run_executable,
+            commands::run_script,
+            commands::kill_script,
             commands::start_server,
             commands::sign_up,
             commands::save_blob,
@@ -162,7 +162,9 @@ pub fn run() {
             commands::get_plugin_version,
             commands::reinstall_plugins,
             commands::list_clients,
-            commands::show_client
+            commands::set_client,
+            commands::show_client,
+            commands::get_running_scripts
         ])
         .run(tauri::generate_context!())
         .expect("Error while running wasp-launcher");

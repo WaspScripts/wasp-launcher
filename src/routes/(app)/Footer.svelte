@@ -7,6 +7,8 @@
 	import type { Database } from "$lib/types/supabase"
 	import { fetch } from "@tauri-apps/plugin-http"
 	import { RefreshCw, SquaresSubtract } from "@lucide/svelte"
+	import { channelManager } from "$lib/communication.svelte"
+	import { goto } from "$app/navigation"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -120,9 +122,9 @@
 </script>
 
 <footer
-	class="sticky bottom-0 flex justify-between bg-surface-200/30 text-base font-semibold backdrop-blur-md dark:bg-surface-800/30"
+	class="sticky bottom-0 flex justify-between bg-surface-200/30 p-4 text-base font-semibold backdrop-blur-md dark:bg-surface-800/30"
 >
-	<div class="mx-4 my-4 flex gap-2">
+	<div class="flex gap-2">
 		{#await lazyGithub then { default: LazyGithub }}
 			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
 				<Tooltip.Trigger>
@@ -165,36 +167,41 @@
 	</div>
 
 	{#if script}
-		<div class="mx-4 my-4 flex gap-2">
+		<div class="flex gap-2">
 			{#if script.access}
-				<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
+				<div class="input-group h-8 grid-cols-[auto_1fr_auto]">
 					<button
-						class="ig-cell hover:preset-tonal"
-						onclick={() => {
+						class="group ig-cell hover:preset-tonal"
+						onclick={async () => {
 							client = -1
 							clientsPromise = invoke("list_clients") as Promise<ClientWindow[]>
+							await invoke("set_client", {})
 						}}
 					>
-						<RefreshCw size={16} class="duration-300 hover:rotate-180" />
+						<RefreshCw size={16} class="duration-500 group-hover:rotate-180" />
 					</button>
 
 					<button
-						class="ig-cell enabled:hover:preset-tonal"
+						class="group ig-cell enabled:hover:preset-tonal"
 						disabled={client < 0}
 						onclick={async () => {
-							if (client < 0) return
-							const clients = await clientsPromise
-							if (client > clients.length - 1) return
-							await invoke("show_client", { hwnd: clients[client].hwnd })
+							await invoke("show_client")
 						}}
 					>
-						<SquaresSubtract size={16} />
+						<SquaresSubtract
+							size={16}
+							class="duration-500 group-enabled:group-hover:animate-pulse"
+						/>
 					</button>
 
 					<select
 						id="client"
 						class="select ig-select w-48 rounded-l-none hover:preset-tonal"
 						bind:value={client}
+						onchange={async () => {
+							const clients = await clientsPromise
+							await invoke("set_client", { client: clients[client] })
+						}}
 					>
 						<option value={-1} disabled selected>Select a client (soon)</option>
 						{#await clientsPromise then clients}
@@ -219,7 +226,11 @@
 					<Tooltip.Trigger>
 						<button
 							class="hover:preset-filled-primary-800 btn preset-filled-primary-500"
-							onclick={execute}
+							onclick={async () => {
+								const id = await execute()
+								await goto("/running/" + id)
+							}}
+							disabled={client < 0}
 						>
 							Run
 						</button>

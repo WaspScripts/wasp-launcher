@@ -4,6 +4,8 @@ import { error } from "@sveltejs/kit"
 import { invoke } from "@tauri-apps/api/core"
 import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 import { listen } from "@tauri-apps/api/event"
+import { channelManager } from "$lib/communication.svelte"
+import { invalidate } from "$app/navigation"
 export const prerender = true
 export const ssr = false
 
@@ -40,7 +42,9 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	const unlisten = await listen<string>("process-finished", async (event) => {
 		const channel = Number(event.payload)
 		console.log(`Process finished: ${channel}`)
+		await Promise.all([channelManager.stopChannel(channel), invalidate("layout:running")])
 	})
+
 	return {
 		supabase,
 		session: promises[0],

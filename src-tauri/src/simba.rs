@@ -2,11 +2,14 @@ use std::{
     fs::{self, create_dir_all, remove_dir_all, remove_file, write, File},
     io::{self, BufRead, BufReader, Cursor},
     path::{Path, PathBuf},
+    process::Stdio,
+    thread,
 };
 
 use serde::Deserialize;
 use tauri::{
     http::{HeaderMap, HeaderValue},
+    ipc::Channel,
     Error,
 };
 use tauri_plugin_http::reqwest::{self, Client};
@@ -182,13 +185,11 @@ pub fn read_plugins_version(path: &Path) -> Result<String, Error> {
 }
 
 async fn fetch_plugins_version() -> Result<String, Box<dyn std::error::Error>> {
-    // Build the headers
     let mut headers = HeaderMap::new();
     headers.insert("apikey", HeaderValue::from_static(SUPABASE_ANON_KEY));
     headers.insert("Accept", HeaderValue::from_static("application/json"));
     headers.insert("Accept-Profile", HeaderValue::from_static("scripts"));
 
-    // Build the URL with query parameters
     let url =
         SUPABASE_URL.to_string() + "rest/v1/plugins?select=version&order=created_at.desc&limit=1";
 
@@ -360,4 +361,146 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
     }
 
     let _ = cmd.spawn().map_err(|err| err.to_string());
+}
+
+pub async fn run_simba_script(
+    path: PathBuf,
+    target: isize,
+    args: Vec<String>,
+    channel: Channel<String>,
+) -> Result<std::process::Child, String> {
+    println!("Attempt to run Simba from: {:?}", path);
+
+    if args.len() != 6 {
+        return Err(format!("Expected 6 arguments, but got {}", args.len()));
+    }
+
+    const URL: &'static str =
+        "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
+
+    let mut body: Option<String> = None;
+
+    let commit = if args[1] == "latest" {
+        println!("Finding latest Simba available");
+
+        let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
+        let text = res.text().await.expect("Failed to read response text");
+        body = Some(text);
+
+        let line = body
+            .as_ref()
+            .unwrap()
+            .lines()
+            .find(|l| l.contains("| simba2000 |"))
+            .expect("Branch not found in README.md");
+
+        let parts: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
+        let commit_col = parts.get(2).expect("No commit column found");
+
+        commit_col
+            .split(']')
+            .next()
+            .and_then(|s| s.strip_prefix('['))
+            .expect("Failed to parse commit")
+            .to_string()
+    } else {
+        args[1].to_string()
+    };
+
+    let exe_path = path.join(format!("Simba-{}.exe", commit));
+
+    if !exe_path.exists() {
+        println!("Downloading Simba-{}.exe", commit);
+        let zip_path = path.join("Win64.zip");
+        if zip_path.exists() {
+            fs::remove_file(&zip_path).expect("Failed to delete Win64.zip");
+        }
+
+        if body.is_none() {
+            let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
+            body = Some(res.text().await.expect("Failed to read response text"));
+        }
+
+        let search_token = format!("[{}]", commit);
+        let cleanbody = body.as_ref().unwrap().replace("<br>", " ");
+
+        let line = cleanbody
+            .lines()
+            .find(|line| line.contains(&search_token))
+            .expect("Commit not found in README.md");
+
+        let mut win64_url = None;
+        for part in line.split('[') {
+            if part.starts_with("Win64](") {
+                if let Some(start) = part.find("](") {
+                    if let Some(end) = part[start + 2..].find(')') {
+                        win64_url = Some(&part[start + 2..start + 2 + end]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let win64_url = win64_url.expect("No Win64 link found");
+        let full_url = format!(
+            "https://github.com/Villavu/Simba-Build-Archive/blob/main{}",
+            win64_url
+        );
+
+        download_and_unzip_file(&full_url, &exe_path)
+            .await
+            .expect("Failed to download or unzip Win64.zip");
+    }
+
+    if args[2] != "none" {
+        let _ = download_and_unzip_directory(path.join("Includes"), "WaspLib", "wasplib", &args[2])
+            .await;
+    }
+
+    let script_file: String = path
+        .join("Scripts")
+        .join(args[0].clone())
+        .to_string_lossy()
+        .to_string();
+
+    let mut cmd = std::process::Command::new(exe_path);
+    cmd.arg(format!("--target={}", target))
+        .arg("--run")
+        .arg(script_file)
+        .env("SCRIPT_ID", &args[3])
+        .env("SCRIPT_REVISION", &args[4])
+        .env("WASP_REFRESH_TOKEN", &args[5]);
+
+    if args[1] != "latest" {
+        cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
+    }
+
+    if (args[2] != "latest") && (args[2] != "none") {
+        cmd.env("SCRIPT_WASPLIB_VERSION", &args[2]);
+    }
+
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    println!("Sending messages to channel: {}", channel.id());
+
+    let stdout = child.stdout.take().unwrap();
+    let stderr = child.stderr.take().unwrap();
+
+    let process_stdout = channel.clone();
+    thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines().flatten() {
+            let _ = process_stdout.send(line);
+        }
+    });
+
+    thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines().flatten() {
+            let _ = channel.send(format!("ERROR: {}", line));
+        }
+    });
+
+    Ok(child)
 }
