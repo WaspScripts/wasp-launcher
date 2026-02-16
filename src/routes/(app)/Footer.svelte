@@ -230,7 +230,6 @@
 								const id = await execute()
 								await goto("/running/" + id)
 							}}
-							disabled={client < 0}
 						>
 							Run
 						</button>
