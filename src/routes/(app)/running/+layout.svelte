@@ -1,13 +1,38 @@
 <script lang="ts">
-	import { running } from "$lib/communication.js"
-	import { SearchIcon } from "@lucide/svelte"
+	import { goto, invalidate } from "$app/navigation"
+	import { channelManager } from "$lib/communication.svelte"
+	import { Copy, SearchIcon, Square, X } from "@lucide/svelte"
+	import { invoke } from "@tauri-apps/api/core"
 
-	let { data, children } = $props()
+	let { children, data } = $props()
+
+	const { process } = $derived(data)
 	let search = $state("")
 
-	$inspect(data.script)
+	const [stopped, running] = $derived(
+		channelManager.processes.reduce<[number[], number[]]>(
+			(acc, idx) => {
+				channelManager.channels[idx]?.stopped ? acc[0].push(idx) : acc[1].push(idx)
+				return acc
+			},
+			[[], []]
+		)
+	)
 
 	let selected = $state(0)
+	const runningIdx = $derived(running.indexOf(process))
+	$effect(() => {
+		if (runningIdx == -1) {
+			const stoppedIdx = stopped.indexOf(process)
+			if (stoppedIdx != -1) {
+				selected = stoppedIdx + running.length
+			} else {
+				selected = 0
+			}
+		}
+	})
+
+	const hasProcesses = $derived(running.length > 0 || stopped.length > 0)
 </script>
 
 <aside
@@ -26,18 +51,34 @@
 	</div>
 
 	<ul class="h-full w-full overflow-y-scroll">
-		{#each running as script, idx}
+		{#each running as entry, idx}
 			<li
 				class="flex preset-outlined-success-200-800 hover:preset-tonal focus:preset-tonal"
 				class:bg-surface-300-700={selected === idx}
 				class:border-primary-300-700={selected === idx}
 			>
 				<a
-					href={"/running/" + script}
+					href={"/running/" + entry}
 					class="my-2 flex h-full w-full justify-between px-2"
 					onclick={() => (selected = idx)}
 				>
-					{script}
+					{channelManager.channels[entry].name}
+				</a>
+			</li>
+		{/each}
+
+		{#each stopped as entry, idx}
+			<li
+				class="flex preset-outlined-success-200-800 text-surface-700-300 hover:preset-tonal hover:text-surface-800-200 focus:preset-tonal"
+				class:bg-surface-300-700={selected === idx + running.length}
+				class:border-primary-300-700={selected === idx + running.length}
+			>
+				<a
+					href={"/running/" + entry}
+					class="my-2 flex h-full w-full justify-between px-2"
+					onclick={() => (selected = idx + running.length)}
+				>
+					{channelManager.channels[entry].name}
 				</a>
 			</li>
 		{/each}
@@ -45,5 +86,44 @@
 </aside>
 
 <main class="flex h-full w-full overflow-y-auto">
-	{@render children()}
+	<div class="relative flex h-full w-full flex-col overflow-hidden">
+		{#if hasProcesses}
+			<div class="absolute right-0 mx-4 flex justify-end gap-2 p-4">
+				<button class="btn rounded-lg border border-surface-500 bg-surface-500/65 p-2">
+					<Copy size={16} />
+				</button>
+				{#if selected < running.length}
+					<button
+						class="btn rounded-lg border border-surface-500 bg-surface-500/70 p-2"
+						onclick={async () => {
+							const result = await invoke("kill_script", { id: running[selected] })
+							console.log("kill_script: ", result)
+						}}
+					>
+						<Square size={16} />
+					</button>
+				{:else}
+					<button
+						class="btn rounded-lg border border-surface-500 bg-surface-500/70 p-2"
+						onclick={async () => {
+							channelManager.removeChannel(stopped[selected - running.length])
+							selected = -1
+							await Promise.all([invalidate("layout:channel"), invalidate("layout:running")])
+							await goto("/running")
+						}}
+					>
+						<X size={16} />
+					</button>
+				{/if}
+			</div>
+		{/if}
+
+		<div
+			class="block min-h-full w-full min-w-fit gap-2 px-4 text-left font-mono text-sm wrap-break-word whitespace-break-spaces"
+			class:bg-stone-950={hasProcesses}
+			class:overflow-y-scroll={hasProcesses}
+		>
+			{@render children()}
+		</div>
+	</div>
 </main>

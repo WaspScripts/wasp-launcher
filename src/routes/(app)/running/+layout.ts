@@ -1,7 +1,13 @@
-import { redirect } from "@sveltejs/kit"
+import { channelManager } from "$lib/communication.svelte"
 
-export const load = async ({ parent }) => {
-	const { scripts, script } = await parent()
-	if (!script) redirect(303, "/running/" + scripts![0].id)
-	return
+export const prerender = false
+export const ssr = false
+
+export const load = async ({ depends, params: { slug } }) => {
+	depends("layout:running")
+	const process = Number(slug)
+
+	return {
+		process
+	}
 }
