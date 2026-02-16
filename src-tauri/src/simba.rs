@@ -198,10 +198,10 @@ async fn fetch_plugins_version() -> Result<String, Box<dyn std::error::Error>> {
         .headers(headers)
         .send()
         .await?
-        .error_for_status()?; // ensure HTTP 2xx
+        .error_for_status()?; //ensure HTTP 2xx
 
-    // Parse JSON response
-    let plugins: Vec<Plugin> = response.json().await?;
+    let body = response.text().await?;
+    let plugins: Vec<Plugin> = serde_json::from_str(&body)?;
 
     if let Some(plugin) = plugins.first() {
         Ok(plugin.version.clone())

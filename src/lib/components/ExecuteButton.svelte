@@ -5,8 +5,8 @@
 	let { icon, label, exe, args } = $props()
 
 	async function execute() {
-		const res = await invoke("run_executable", { exe, args })
-		console.log(res)
+		const result = await invoke("run_executable", { exe, args })
+		console.log("run_executable: ", result)
 	}
 	let openState = $state(false)
 </script>

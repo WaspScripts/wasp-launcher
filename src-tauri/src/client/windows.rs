@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use windows::core::BOOL;
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, RECT};
 use windows::Win32::System::Diagnostics::ToolHelp::{
@@ -10,10 +10,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SW_SHOW,
 };
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WindowMatch {
     pid: u32,
-    hwnd: isize,
+    pub(crate) hwnd: isize,
     name: String,
 }
 

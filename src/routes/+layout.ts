@@ -3,6 +3,7 @@ import { getProfile, getSession, getUser, supabase } from "$lib/supabase"
 import { error } from "@sveltejs/kit"
 import { invoke } from "@tauri-apps/api/core"
 import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
+import { listen } from "@tauri-apps/api/event"
 export const prerender = true
 export const ssr = false
 
@@ -14,7 +15,10 @@ export const load = async ({ depends, url: { searchParams } }) => {
 
 	const promises = await Promise.all([
 		getSession(),
-		storeLoad("settings.json", { autoSave: true }),
+		storeLoad("settings.json", {
+			autoSave: true,
+			defaults: { dark: true, theme: "wasp", sidebar: true }
+		}),
 		getProfile(getUser()),
 		invoke("get_executable_path", { exe: "simba" }) as Promise<string>,
 		invoke("get_executable_path", { exe: "devsimba" }) as Promise<string>,
@@ -33,6 +37,10 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	devModeStore.set(promises[5])
 	devUpdatesStore.set(promises[6])
 
+	const unlisten = await listen<string>("process-finished", async (event) => {
+		const channel = Number(event.payload)
+		console.log(`Process finished: ${channel}`)
+	})
 	return {
 		supabase,
 		session: promises[0],
@@ -41,6 +49,7 @@ export const load = async ({ depends, url: { searchParams } }) => {
 		settings,
 		dark: (settingValues[0] as boolean) ?? true,
 		theme: (settingValues[1] as string) ?? "wasp",
-		sidebar: (settingValues[2] as boolean) ?? true
+		sidebar: (settingValues[2] as boolean) ?? true,
+		unlisten
 	}
 }

@@ -33,11 +33,11 @@ pub fn get_dev_mode(launcher_vars: State<'_, Mutex<LauncherVariables>>) -> bool 
 #[tauri::command]
 pub fn set_dev_mode(
     app: tauri::AppHandle,
-    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    launcher: State<'_, Mutex<LauncherVariables>>,
     state: bool,
 ) {
-    let mut launcher_vars = launcher_vars.lock().unwrap();
-    launcher_vars.devmode = state;
+    let mut launcher = launcher.lock().unwrap();
+    launcher.devmode = state;
 
     let store = app
         .store("settings.json")
@@ -46,8 +46,8 @@ pub fn set_dev_mode(
 }
 
 #[tauri::command]
-pub fn get_dev_updates(launcher_vars: State<'_, Mutex<LauncherVariables>>) -> bool {
-    let launcher_vars = launcher_vars.lock().unwrap();
+pub fn get_dev_updates(launcher: State<'_, Mutex<LauncherVariables>>) -> bool {
+    let launcher_vars = launcher.lock().unwrap();
     launcher_vars.dev_updates
 }
 
@@ -304,17 +304,15 @@ pub async fn sign_up(id: String) -> Result<String, String> {
     let res = client
         .post(url)
         .header("Content-Type", "application/json")
-        .json(&body)
+        .body(body.to_string())
         .send()
         .await
-        .map_err(|e| format!("Request error: {}", e))
-        .expect("Request error");
+        .map_err(|e| format!("Request error: {}", e))?;
 
     let text = res
         .text()
         .await
-        .map_err(|e| format!("Failed to read response: {}", e))
-        .expect("Failed to read response");
+        .map_err(|e| format!("Failed to read response: {}", e))?;
 
     Ok(text)
 }

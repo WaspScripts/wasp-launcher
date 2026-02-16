@@ -42,7 +42,7 @@
 		class="mx-auto h-auto max-h-60 w-full max-w-140 rounded-md xl:mx-0 xl:w-auto xl:max-w-full"
 		src={DATABASE_URL + "storage/v1/object/public/imgs/scripts/" + script.id + "/banner.jpg"}
 		alt="Script banner"
-		loading="lazy"
+		loading="eager"
 	/>
 </ScriptHeader>
 
