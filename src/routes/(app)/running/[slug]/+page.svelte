@@ -1,27 +1,38 @@
 <script lang="ts">
 	import { channelManager } from "$lib/communication.svelte"
+
 	let { data } = $props()
 
-	function transformMessage(msg: string) {
-		let style: string | null = null
-		if (!msg.startsWith("\0\0")) return { message: msg, style }
-		const flag = msg.slice(0, 8)
+	const STYLES: Record<number, string> = {
+		50: "text-yellow-500", //2 Warning
+		52: "text-red-500", //4 Error
+		56: "text-green-500" //8 Success
+	}
 
-		if (flag.endsWith("2")) {
-			style = "warning"
-		} else if (flag.endsWith("4")) {
-			style = "error"
-		} else if (flag.endsWith("8")) {
-			style = "success"
+	function transformLog(msg: string) {
+		if (msg.length < 8 || msg.charCodeAt(0) !== 0 || msg.charCodeAt(1) !== 0) {
+			return { text: msg, cls: "" }
 		}
 
-		return { message: msg.slice(8), style }
+		const code = msg.charCodeAt(7)
+		return {
+			text: msg.slice(8),
+			cls: STYLES[code] || ""
+		}
 	}
+
+	let logs = $derived.by(() => {
+		const raw = channelManager.getLogs(data.process)
+		const out = new Array(raw.length)
+		for (let i = 0; i < raw.length; i++) {
+			out[i] = transformLog(raw[i])
+		}
+		return out
+	})
 </script>
 
-{#if channelManager.channels[data.process]}
-	{#each channelManager.channels[data.process].logs as msg}
-		{@const { message, style } = transformMessage(msg)}
-		<p class={style ? `text-${style}-500` : ""}>{message}</p>
+<div class="font-mono text-sm leading-tight">
+	{#each logs as log}
+		<p class={log.cls}>{log.text}</p>
 	{/each}
-{/if}
+</div>

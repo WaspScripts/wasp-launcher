@@ -19,17 +19,12 @@
 		)
 	)
 
-	let selected = $state(0)
-	const runningIdx = $derived(running.indexOf(process))
-	$effect(() => {
-		if (runningIdx == -1) {
-			const stoppedIdx = stopped.indexOf(process)
-			if (stoppedIdx != -1) {
-				selected = stoppedIdx + running.length
-			} else {
-				selected = 0
-			}
-		}
+	const selected = $derived.by(() => {
+		const i = running.indexOf(process)
+		if (i > -1) return i
+		const idx = stopped.indexOf(process)
+		if (idx == -1) return 0
+		return idx + running.length
 	})
 
 	const hasProcesses = $derived(running.length > 0 || stopped.length > 0)
@@ -53,15 +48,11 @@
 	<ul class="h-full w-full overflow-y-scroll">
 		{#each running as entry, idx}
 			<li
-				class="flex preset-outlined-success-200-800 hover:preset-tonal focus:preset-tonal"
+				class="flex preset-outlined-success-200-800 text-sm hover:preset-tonal focus:preset-tonal"
 				class:bg-surface-300-700={selected === idx}
 				class:border-primary-300-700={selected === idx}
 			>
-				<a
-					href={"/running/" + entry}
-					class="my-2 flex h-full w-full justify-between px-2"
-					onclick={() => (selected = idx)}
-				>
+				<a href={"/running/" + entry} class="my-2 flex h-full w-full justify-between px-2">
 					{channelManager.channels[entry].name}
 				</a>
 			</li>
@@ -73,11 +64,7 @@
 				class:bg-surface-300-700={selected === idx + running.length}
 				class:border-primary-300-700={selected === idx + running.length}
 			>
-				<a
-					href={"/running/" + entry}
-					class="my-2 flex h-full w-full justify-between px-2"
-					onclick={() => (selected = idx + running.length)}
-				>
+				<a href={"/running/" + entry} class="my-2 flex h-full w-full justify-between px-2">
 					{channelManager.channels[entry].name}
 				</a>
 			</li>
@@ -107,7 +94,6 @@
 						class="btn rounded-lg border border-surface-500 bg-surface-500/70 p-2"
 						onclick={async () => {
 							channelManager.removeChannel(stopped[selected - running.length])
-							selected = -1
 							await Promise.all([invalidate("layout:channel"), invalidate("layout:running")])
 							await goto("/running")
 						}}
@@ -119,7 +105,7 @@
 		{/if}
 
 		<div
-			class="block min-h-full w-full min-w-fit gap-2 px-4 text-left font-mono text-sm wrap-break-word whitespace-break-spaces"
+			class="block min-h-full w-full min-w-fit gap-2 px-4 text-left wrap-break-word whitespace-break-spaces"
 			class:bg-stone-950={hasProcesses}
 			class:overflow-y-scroll={hasProcesses}
 		>

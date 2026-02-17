@@ -277,38 +277,34 @@ pub async fn run_script(
 
     let app_clone = app.clone();
 
-    std::thread::spawn(move || {
-        loop {
-            // 1. Scope to limit how long we hold the lock
-            let status = {
-                let mut inner_guard = shared_process.lock().unwrap();
-                if let Some(child) = inner_guard.as_mut() {
-                    child.try_wait()
-                } else {
-                    return;
-                }
-            };
+    std::thread::spawn(move || loop {
+        let status = {
+            let mut inner_guard = shared_process.lock().unwrap();
+            if let Some(child) = inner_guard.as_mut() {
+                child.try_wait()
+            } else {
+                return;
+            }
+        };
 
-            match status {
-                Ok(Some(exit_status)) => {
-                    println!("Process {} exited with status: {}", id, exit_status);
+        match status {
+            Ok(Some(exit_status)) => {
+                println!("Process {} exited with status: {}", id, exit_status);
 
-                    if let Some(launcher_state) = app_clone.try_state::<Mutex<LauncherVariables>>()
-                    {
-                        let guard = launcher_state.lock().unwrap();
-                        guard.scripts.lock().unwrap().remove(&id);
-                    }
+                if let Some(launcher_state) = app_clone.try_state::<Mutex<LauncherVariables>>() {
+                    let guard = launcher_state.lock().unwrap();
+                    guard.scripts.lock().unwrap().remove(&id);
+                }
 
-                    let _ = app_clone.emit("process-finished", id);
-                    break;
-                }
-                Ok(None) => {
-                    std::thread::sleep(std::time::Duration::from_millis(500));
-                }
-                Err(e) => {
-                    println!("Error checking process status: {}", e);
-                    break;
-                }
+                let _ = app_clone.emit("process-finished", id);
+                break;
+            }
+            Ok(None) => {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+            Err(e) => {
+                println!("Error checking process status: {}", e);
+                break;
             }
         }
     });
