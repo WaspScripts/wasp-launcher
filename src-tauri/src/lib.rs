@@ -129,7 +129,6 @@ pub fn run() {
                 }
             };
 
-            settings.close_resource();
 
             app.manage(Mutex::new(LauncherVariables {
                 simba: simba_path.clone(),
