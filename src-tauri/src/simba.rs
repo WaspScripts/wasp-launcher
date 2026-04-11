@@ -59,7 +59,7 @@ async fn download_and_unzip_file(
     Ok(())
 }
 
-async fn download_and_unzip_directory(
+async fn download_and_unzip_dir(
     path: PathBuf,
     dest: &str,
     db_path: &str,
@@ -79,7 +79,7 @@ async fn download_and_unzip_directory(
 
     if !zip_path.exists() {
         let url = format!("{}storage/v1/object/{}/{}.zip", SUPABASE_URL, db_path, src);
-        println!("Downloading WaspLib {} from {}", src, url);
+        println!("Downloading {} from {}", src, url);
 
         let response = Client::new()
             .get(&url)
@@ -114,7 +114,7 @@ async fn download_and_unzip_directory(
         }
     }
 
-    println!("WaspLib {}.zip extracted to {:?}", src, path);
+    println!("{}.zip extracted to {:?}", src, path);
 
     Ok(())
 }
@@ -225,8 +225,7 @@ pub async fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), Error> {
 
     let parent_dir = plugins_path.join("..");
     let _ =
-        download_and_unzip_directory(parent_dir.to_path_buf(), "wasp-plugins", "plugins", &latest)
-            .await;
+        download_and_unzip_dir(parent_dir.to_path_buf(), "wasp-plugins", "plugins", &latest).await;
 
     Ok(())
 }
@@ -260,14 +259,12 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
     const URL: &'static str =
         "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
 
-    let mut body: Option<String> = None;
-
     let commit = if args[1] == "latest" {
         println!("Finding latest Simba available");
 
         let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
         let text = res.text().await.expect("Failed to read response text");
-        body = Some(text);
+        let body = Some(text);
 
         let line = body
             .as_ref()
@@ -293,51 +290,17 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
 
     if !exe_path.exists() {
         println!("Downloading Simba-{}.exe", commit);
-        let zip_path = path.join("Win64.zip");
-        if zip_path.exists() {
-            fs::remove_file(&zip_path).expect("Failed to delete Win64.zip");
-        }
-
-        // only fetch if we don’t already have a body
-        if body.is_none() {
-            let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
-            body = Some(res.text().await.expect("Failed to read response text"));
-        }
-
-        let search_token = format!("[{}]", commit);
-        let cleanbody = body.as_ref().unwrap().replace("<br>", " ");
-
-        let line = cleanbody
-            .lines()
-            .find(|line| line.contains(&search_token))
-            .expect("Commit not found in README.md");
-
-        let mut win64_url = None;
-        for part in line.split('[') {
-            if part.starts_with("Win64](") {
-                if let Some(start) = part.find("](") {
-                    if let Some(end) = part[start + 2..].find(')') {
-                        win64_url = Some(&part[start + 2..start + 2 + end]);
-                        break;
-                    }
-                }
-            }
-        }
-
-        let win64_url = win64_url.expect("No Win64 link found");
-        let full_url = format!(
-            "https://github.com/Villavu/Simba-Build-Archive/blob/main{}",
-            win64_url
+        let url = format!(
+            "{}storage/v1/object/simba/{}/win64.zip",
+            SUPABASE_URL, commit
         );
-
-        download_and_unzip_file(&full_url, &exe_path)
+        download_and_unzip_file(&url, &exe_path)
             .await
-            .expect("Failed to download or unzip Win64.zip");
+            .expect(&format!("Failed to download or unzip simba-{}.exe", commit));
     }
 
     if args[2] != "none" {
-        let _ = download_and_unzip_directory(path.join("Includes"), "WaspLib", "wasplib", &args[2])
-            .await;
+        let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
     }
 
     let script_file: String = path
@@ -378,14 +341,12 @@ pub async fn run_simba_script(
     const URL: &'static str =
         "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
 
-    let mut body: Option<String> = None;
-
     let commit = if args[1] == "latest" {
         println!("Finding latest Simba available");
 
         let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
         let text = res.text().await.expect("Failed to read response text");
-        body = Some(text);
+        let body = Some(text);
 
         let line = body
             .as_ref()
@@ -411,50 +372,17 @@ pub async fn run_simba_script(
 
     if !exe_path.exists() {
         println!("Downloading Simba-{}.exe", commit);
-        let zip_path = path.join("Win64.zip");
-        if zip_path.exists() {
-            fs::remove_file(&zip_path).expect("Failed to delete Win64.zip");
-        }
-
-        if body.is_none() {
-            let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
-            body = Some(res.text().await.expect("Failed to read response text"));
-        }
-
-        let search_token = format!("[{}]", commit);
-        let cleanbody = body.as_ref().unwrap().replace("<br>", " ");
-
-        let line = cleanbody
-            .lines()
-            .find(|line| line.contains(&search_token))
-            .expect("Commit not found in README.md");
-
-        let mut win64_url = None;
-        for part in line.split('[') {
-            if part.starts_with("Win64](") {
-                if let Some(start) = part.find("](") {
-                    if let Some(end) = part[start + 2..].find(')') {
-                        win64_url = Some(&part[start + 2..start + 2 + end]);
-                        break;
-                    }
-                }
-            }
-        }
-
-        let win64_url = win64_url.expect("No Win64 link found");
-        let full_url = format!(
-            "https://github.com/Villavu/Simba-Build-Archive/blob/main{}",
-            win64_url
+        let url = format!(
+            "{}storage/v1/object/simba/{}/win64.zip",
+            SUPABASE_URL, commit
         );
-
-        download_and_unzip_file(&full_url, &exe_path)
+        download_and_unzip_file(&url, &exe_path)
             .await
-            .expect("Failed to download or unzip Win64.zip");
+            .expect(&format!("Failed to download or unzip simba-{}.exe", commit));
     }
 
     if args[2] != "none" {
-        let _ = download_and_unzip_directory(path.join("Includes"), "WaspLib", "wasplib", &args[2])
-            .await;
+        let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
     }
 
     let script_file: String = path
