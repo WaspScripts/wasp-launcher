@@ -29,23 +29,13 @@ export async function refreshSession() {
 }
 
 export async function getSession() {
-	const promises = await Promise.all([
-		supabase.auth.getUser(), supabase.auth.getSession()
-	])
-	const { data: {user} } = promises[0]
-	if (!user) return null
-
-	const { data: { session } } = promises[1]
-
-	return session
+	const promises = await Promise.all([supabase.auth.getUser(), supabase.auth.getSession()])
+	if (!promises[0].data.user) return null
+	return promises[1].data.session
 }
 
 export async function getUser() {
-	const {
-		data: { user }
-	} = await supabase.auth.getUser()
-
-	return user
+	const user = await supabase.auth.getUser()
 	return user.data.user
 }
 
@@ -70,6 +60,7 @@ export async function getSubscriptions(userID: string) {
 		.from("subscriptions")
 		.select("product, price, date_start, date_end, cancel, disabled")
 		.eq("user_id", userID)
+		.gte("date_end", new Date().toISOString())
 
 	if (err) return []
 	return data
@@ -80,7 +71,8 @@ export async function getFreeAccess(userID: string) {
 		.schema("profiles")
 		.from("free_access")
 		.select("product, date_start, date_end")
-		.eq("id", userID)
+		.eq("user_id", userID)
+		.gte("date_end", new Date().toISOString())
 
 	if (err) return []
 	return data
