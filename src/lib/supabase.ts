@@ -46,6 +46,7 @@ export async function getUser() {
 	} = await supabase.auth.getUser()
 
 	return user
+	return user.data.user
 }
 
 export async function getProfile(userPromise: Promise<User | null>) {
