@@ -8,7 +8,7 @@ const shikiHighlighter = await Shiki({
 	langs: ["javascript", "typescript", "bash", "cmd", "yml", "yaml", "pascal", "java"]
 })
 
-export const mardownRenderer = new markdownit("commonmark", {
+export const mdRenderer = new markdownit("commonmark", {
 	linkify: true,
 	typographer: true
 })

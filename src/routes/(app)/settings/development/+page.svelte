@@ -2,7 +2,7 @@
 	import { invoke } from "@tauri-apps/api/core"
 	import { open } from "@tauri-apps/plugin-dialog"
 	import { Switch } from "@skeletonlabs/skeleton-svelte"
-	import { mardownRenderer } from "$lib/markdown"
+	import { mdRenderer } from "$lib/markdown"
 	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 
 	async function setDevMode(state: boolean) {
@@ -80,7 +80,7 @@ Also while on this tab, the buttons below will affect your development path.`
 	<div
 		class="mx-auto prose h-80 w-full min-w-full overflow-y-scroll rounded-md preset-outlined-surface-300-700 p-8 dark:prose-invert"
 	>
-		{@html mardownRenderer.render(info)}
+		{@html mdRenderer.render(info)}
 	</div>
 
 	<Switch
@@ -150,7 +150,7 @@ Also while on this tab, the buttons below will affect your development path.`
 
 		<dialog
 			bind:this={dialog}
-			class="top-1/2 left-1/2 z-10 max-w-[640px] -translate-1/2 space-y-4 rounded-container bg-surface-100-900 p-4 text-inherit backdrop-blur-lg backdrop:bg-surface-50-950/90"
+			class="top-1/2 left-1/2 z-10 max-w-160 -translate-1/2 space-y-4 rounded-container bg-surface-100-900 p-4 text-inherit backdrop-blur-lg backdrop:bg-surface-50-950/90"
 		>
 			<h2 class="h3">Reinstall Plugins</h2>
 			<p>Please make sure you are not running any client you've used waspscripts on.</p>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { mardownRenderer } from "$lib/markdown"
+	import { mdRenderer } from "$lib/markdown"
 	import { DATABASE_URL } from "$lib/supabase"
 	import { replaceScriptContent } from "$lib/utils"
 	import ScriptHeader from "./ScriptHeader.svelte"
@@ -56,6 +56,6 @@
 	{/if}
 
 	<article class="my-4 prose dark:prose-invert">
-		{@html mardownRenderer.render(content)}
+		{@html mdRenderer.render(content)}
 	</article>
 </div>

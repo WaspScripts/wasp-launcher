@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, create_dir_all, remove_dir_all, remove_file, write, File},
+    fs::{create_dir_all, remove_dir_all, remove_file, write, File},
     io::{self, BufRead, BufReader, Cursor},
     path::{Path, PathBuf},
     process::Stdio,
