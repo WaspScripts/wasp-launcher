@@ -94,7 +94,6 @@
 
 		let refreshToken = awaitedPromises[0] as string
 
-		const exe = "simba"
 		const args = [
 			mainFile,
 			version.simba,
@@ -104,7 +103,10 @@
 			refreshToken
 		]
 
-		await invoke("run_executable", { exe, args })
+		const channel = await channelManager.createChannel(script.title)
+		const result = await invoke("run_script", { args, channel })
+		console.log("run_script: ", result)
+		return channel.id
 	}
 
 	let client = $state(-1)
@@ -203,7 +205,7 @@
 							await invoke("set_client", { client: clients[client] })
 						}}
 					>
-						<option value={-1} disabled selected>Select a client (soon)</option>
+						<option value={-1} disabled selected>Select a client</option>
 						{#await clientsPromise then clients}
 							{#each clients as clnt, idx}
 								<option value={idx}>
@@ -228,7 +230,9 @@
 							class="hover:preset-filled-primary-800 btn preset-filled-primary-500"
 							onclick={async () => {
 								const id = await execute()
+								await goto("/running/" + id)
 							}}
+							disabled={client < 0}
 						>
 							Run
 						</button>

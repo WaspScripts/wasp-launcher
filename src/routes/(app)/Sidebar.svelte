@@ -66,7 +66,11 @@
 			return
 		}
 
-		await invoke("run_executable", { exe, args: ["", data.simba, wasplib, "", "", refresh_token] })
+		const args = ["", data.simba, wasplib, "", "", refresh_token]
+
+		console.log(exe)
+		console.log(args)
+		await invoke("run_executable", { exe, args })
 	}
 
 	// svelte-ignore state_referenced_locally
@@ -126,7 +130,7 @@
 			<Tooltip positioning={{ placement: "top" }} openDelay={700}>
 				<Tooltip.Trigger
 					class="btn flex h-9 w-full justify-start preset-filled-surface-500 text-xs *:pointer-events-none lg:text-sm"
-					onclick={() => execute("devsimba", $devUpdatesStore ? "latest" : "none")}
+					onclick={async () => await execute("devsimba", $devUpdatesStore ? "latest" : "none")}
 				>
 					<TestTubeDiagonal size={20} />
 					{#if currentSidebar}
