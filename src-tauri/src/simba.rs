@@ -310,7 +310,8 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         .to_string();
 
     let mut cmd = std::process::Command::new(exe_path);
-    cmd.arg(script_file)
+    cmd.arg("--open")
+        .arg(script_file)
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
         .env("WASP_REFRESH_TOKEN", &args[5]);
