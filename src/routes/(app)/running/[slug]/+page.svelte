@@ -14,7 +14,7 @@
 
 <div class="font-mono text-sm leading-tight">
 	{#each logs as log}
-		<span class={`text-[#${log.color}]`}>{log.text}</span>
+		<span style="color:#{log.color}">{log.text}</span>
 		{#if log.close}<br />{/if}
 	{/each}
 </div>
