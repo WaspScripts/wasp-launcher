@@ -7,6 +7,8 @@
 	import type { Database } from "$lib/types/supabase"
 	import { fetch } from "@tauri-apps/plugin-http"
 	import { RefreshCw, SquaresSubtract } from "@lucide/svelte"
+	import { channelManager } from "$lib/communication.svelte"
+	import { goto } from "$app/navigation"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
