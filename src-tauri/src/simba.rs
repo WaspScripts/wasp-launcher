@@ -303,11 +303,7 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
     }
 
-    let script_file: String = path
-        .join("Scripts")
-        .join(args[0].clone())
-        .to_string_lossy()
-        .to_string();
+    let script_file = path.join("Scripts").join(&args[0]);
 
     let mut cmd = std::process::Command::new(exe_path);
     cmd.arg("--open")
@@ -392,8 +388,11 @@ pub async fn run_simba_script(
         .to_string_lossy()
         .to_string();
 
+    let trgt = format!("--target={}", target);
     let mut cmd = std::process::Command::new(exe_path);
-    cmd.arg(format!("--target={}", target))
+
+    cmd.arg(trgt)
+        .arg("--keep-formatting")
         .arg("--run")
         .arg(script_file)
         .env("SCRIPT_ID", &args[3])
@@ -413,8 +412,8 @@ pub async fn run_simba_script(
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     println!("Sending messages to channel: {}", channel.id());
 
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
 
     let process_stdout = channel.clone();
     thread::spawn(move || {
