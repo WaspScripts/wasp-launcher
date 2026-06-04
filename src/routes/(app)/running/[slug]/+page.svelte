@@ -1,18 +1,25 @@
 <script lang="ts">
 	import { channelManager } from "$lib/communication.svelte"
-	let { data } = $props()
+	import { onMount, tick } from "svelte"
+	const { data } = $props()
+	let container: HTMLDivElement
+	let parent: HTMLDivElement
+	const logs = $derived([...channelManager.getLogs(data.process)])
 
-	let logs = $derived.by(() => {
-		const raw = channelManager.getLogs(data.process)
-		const out = new Array(raw.length)
-		for (let i = 0; i < raw.length; i++) {
-			out[i] = raw[i]
-		}
-		return out
+	function scrollDown() {
+		if (!parent) return
+		parent.scrollTop = parent.scrollHeight
+	}
+
+	$effect(() => {
+		logs
+		tick().then(() => scrollDown())
 	})
+
+	onMount(() => (parent = container.parentElement as HTMLDivElement))
 </script>
 
-<div class="font-mono text-sm leading-tight">
+<div bind:this={container} class="font-mono text-sm leading-tight">
 	{#each logs as log}
 		<span style="color:#{log.color}">{log.text}</span>
 		{#if log.close}<br />{/if}

@@ -110,7 +110,6 @@ class ChannelManager {
 			const buffer = this._logsBuffer[id]
 
 			const parsed = parseLogMessage(msg)
-			console.log(parsed)
 			buffer.push(...parsed)
 
 			while (buffer.length > MAX_LOGS) {
