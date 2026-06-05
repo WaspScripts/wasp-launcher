@@ -173,27 +173,35 @@
 			{#if script.access}
 				<div class="input-group h-8 grid-cols-[auto_1fr_auto]">
 					<button
-						class="group ig-cell hover:preset-tonal"
+						class="group ig-cell gap-2 hover:preset-tonal"
 						onclick={async () => {
 							client = -1
 							clientsPromise = invoke("list_clients") as Promise<ClientWindow[]>
 							await invoke("set_client", {})
 						}}
 					>
+						<span
+							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300 group-hover:max-w-32 group-hover:opacity-100"
+						>
+							Refresh clients
+						</span>
 						<RefreshCw size={16} class="duration-500 group-hover:rotate-180" />
 					</button>
 
 					<button
-						class="group ig-cell enabled:hover:preset-tonal"
+						class="group ig-cell gap-2 enabled:hover:preset-tonal"
 						disabled={client < 0}
 						onclick={async () => {
 							await invoke("show_client")
 						}}
 					>
-						<SquaresSubtract
-							size={16}
-							class="duration-500 group-enabled:group-hover:animate-pulse"
-						/>
+						<span
+							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300
+							group-enabled:group-hover:max-w-32 group-enabled:group-hover:opacity-100"
+						>
+							Show client
+						</span>
+						<SquaresSubtract size={16} />
 					</button>
 
 					<select

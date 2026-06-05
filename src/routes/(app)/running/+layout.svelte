@@ -76,17 +76,29 @@
 	<div class="relative flex h-full w-full flex-col overflow-hidden">
 		{#if hasProcesses}
 			<div class="absolute right-0 mx-4 flex justify-end gap-2 p-4">
-				<button class="btn rounded-lg border border-surface-500 bg-surface-500/65 p-2">
+				<button
+					class="btn btn-group rounded-lg border border-surface-500 bg-surface-500/65 p-2"
+					onclick={async () => {
+						const data = channelManager.getLogs(stopped[selected - running.length])
+						const lines = data.map((log) => {
+							if (log.close) return log.text + "\n"
+							return log.text + " "
+						})
+						await navigator.clipboard.writeText(lines.join(""))
+					}}
+				>
+					<span> Copy </span>
 					<Copy size={16} />
 				</button>
 				{#if selected < running.length}
 					<button
-						class="btn rounded-lg border border-surface-500 bg-surface-500/70 p-2"
+						class="btn btn-group flex gap-2 rounded-lg border border-surface-500 bg-surface-500/70 p-2"
 						onclick={async () => {
 							const result = await invoke("kill_script", { id: running[selected] })
 							console.log("kill_script: ", result)
 						}}
 					>
+						<span> Stop </span>
 						<Square size={16} />
 					</button>
 				{:else}
@@ -98,6 +110,7 @@
 							await goto("/running")
 						}}
 					>
+						<span> Close </span>
 						<X size={16} />
 					</button>
 				{/if}
@@ -105,6 +118,7 @@
 		{/if}
 
 		<div
+			id="running-container"
 			class="block min-h-full w-full min-w-fit gap-2 px-4 text-left wrap-break-word whitespace-break-spaces"
 			class:bg-stone-950={hasProcesses}
 			class:overflow-y-scroll={hasProcesses}
