@@ -3,10 +3,11 @@
 	import { channelManager } from "$lib/communication.svelte"
 	import { Copy, SearchIcon, Square, X } from "@lucide/svelte"
 	import { invoke } from "@tauri-apps/api/core"
+	import { onDestroy } from "svelte"
 
 	let { children, data } = $props()
 
-	const { process } = $derived(data)
+	const { process, channel } = $derived(data)
 	let search = $state("")
 
 	const [stopped, running] = $derived(
@@ -28,6 +29,33 @@
 	})
 
 	const hasProcesses = $derived(running.length > 0 || stopped.length > 0)
+
+	function getRuntime(start: number, finish: number): string {
+		const time = finish - start
+
+		const totalSeconds = Math.floor(time / 1000)
+
+		const hours = Math.floor(totalSeconds / 3600)
+		const minutes = Math.floor((totalSeconds % 3600) / 60)
+		const seconds = totalSeconds % 60
+
+		return `${hours.toString().padStart(2, "0")}:${minutes
+			.toString()
+			.padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+	}
+
+	let runtime = $state("00:00:00")
+
+	const runtimeInterval = setInterval(() => {
+		if (!channel) {
+			clearInterval(runtimeInterval)
+			return
+		}
+		if (channel.stopped) runtime = getRuntime(channel.start, channel.finish)
+		else runtime = getRuntime(channel.start, Date.now())
+	}, 1000)
+
+	onDestroy(() => clearInterval(runtimeInterval))
 </script>
 
 <aside
@@ -76,10 +104,14 @@
 	<div class="relative flex h-full w-full flex-col overflow-hidden">
 		{#if hasProcesses}
 			<div class="absolute right-0 mx-4 flex justify-end gap-2 p-4">
+				<div class="rounded-lg border border-surface-500 bg-surface-500/65 p-2">
+					{runtime}
+				</div>
 				<button
 					class="btn btn-group rounded-lg border border-surface-500 bg-surface-500/65 p-2"
 					onclick={async () => {
-						const data = channelManager.getLogs(stopped[selected - running.length])
+						if (!channel) return
+						const data = channelManager.logsBuffer[process]
 						const lines = data.map((log) => {
 							if (log.close) return log.text + "\n"
 							return log.text + " "

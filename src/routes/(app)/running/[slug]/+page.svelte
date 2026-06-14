@@ -2,8 +2,10 @@
 	import { channelManager } from "$lib/communication.svelte"
 	import { onMount, tick } from "svelte"
 	const { data } = $props()
+
 	let container: HTMLDivElement
-	const logs = $derived([...channelManager.getLogs(data.process)])
+
+	const logs = $derived([...channelManager.logsBuffer[data.process]])
 
 	function scrollDown() {
 		if (!container) return

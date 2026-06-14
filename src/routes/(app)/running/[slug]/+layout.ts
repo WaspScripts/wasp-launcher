@@ -5,9 +5,8 @@ export const prerender = false
 export const ssr = false
 
 export const load = async ({ parent, depends }) => {
-	const { process } = await parent()
+	const { channel } = await parent()
 	depends("layout:channel")
-	const channel = channelManager.channels[process]
 	if (!channel) redirect(303, "/running")
-	return
+	return { channel }
 }

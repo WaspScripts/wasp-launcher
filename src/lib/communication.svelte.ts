@@ -4,6 +4,8 @@ interface ChannelEntry {
 	name: string
 	version: number
 	stopped: boolean
+	start: number
+	finish: number
 }
 
 interface LogSegment {
@@ -88,7 +90,7 @@ function parseLogMessage(msg: string): LogSegment[] {
 }
 
 class ChannelManager {
-	private _logsBuffer: Record<number, LogSegment[]> = {}
+	logsBuffer: Record<number, LogSegment[]> = {}
 
 	processes = $state<number[]>([])
 	channels = $state<Record<number, ChannelEntry>>({})
@@ -97,8 +99,8 @@ class ChannelManager {
 		const channel = new Channel<string>()
 		const id = channel.id
 
-		this._logsBuffer[id] = []
-		this.channels[id] = { name, version: 0, stopped: false }
+		this.logsBuffer[id] = []
+		this.channels[id] = { name, version: 0, stopped: false, start: Date.now(), finish: 0 }
 		this.processes.push(id)
 
 		channel.onmessage = (msg: string) => {
@@ -107,7 +109,7 @@ class ChannelManager {
 				return
 			}
 
-			const buffer = this._logsBuffer[id]
+			const buffer = this.logsBuffer[id]
 
 			const parsed = parseLogMessage(msg)
 			buffer.push(...parsed)
@@ -122,20 +124,16 @@ class ChannelManager {
 		return channel
 	}
 
-	getLogs(id: number): LogSegment[] {
-		const entry = this.channels[id]
-		if (!entry) return []
-		entry.version
-		return this._logsBuffer[id]
-	}
-
 	stopChannel(id: number) {
-		if (this.channels[id]) this.channels[id].stopped = true
+		if (this.channels[id]) {
+			this.channels[id].stopped = true
+			this.channels[id].finish = Date.now()
+		}
 	}
 
 	removeChannel(id: number) {
 		if (!this.channels[id]) return
-		delete this._logsBuffer[id]
+		delete this.logsBuffer[id]
 		delete this.channels[id]
 		this.processes = this.processes.filter((item) => item !== id)
 	}
