@@ -111,7 +111,7 @@
 					class="btn btn-group rounded-lg border border-surface-500 bg-surface-500/65 p-2"
 					onclick={async () => {
 						if (!channel) return
-						const data = channelManager.logsBuffer[process]
+						const data = channelManager.getLogs(process)
 						const lines = data.map((log) => {
 							if (log.close) return log.text + "\n"
 							return log.text + " "

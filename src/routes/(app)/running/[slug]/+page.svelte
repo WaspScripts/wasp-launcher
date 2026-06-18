@@ -5,7 +5,7 @@
 
 	let container: HTMLDivElement
 
-	const logs = $derived([...channelManager.logsBuffer[data.process]])
+	const logs = $derived([...channelManager.getLogs(data.process)])
 
 	function scrollDown() {
 		if (!container) return
