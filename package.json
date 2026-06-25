@@ -1,6 +1,6 @@
 {
 	"name": "wasp-launcher",
-	"version": "0.15.20",
+	"version": "0.15.21",
 	"description": "",
 	"type": "module",
 	"scripts": {
