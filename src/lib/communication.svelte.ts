@@ -139,6 +139,7 @@ class ChannelManager {
 	}
 
 	getLogs(id: number) {
+		if (!this.channels[id]) return []
 		this.channels[id].version
 		return this._logsBuffer[id]
 	}
