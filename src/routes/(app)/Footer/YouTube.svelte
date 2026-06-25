@@ -1,5 +1,5 @@
 <a
-	href="https://www.youtube.com/@wasp-scripts"
+	href="https://www.youtube.com/@waspscripts"
 	class="my-auto btn flex h-8 hover:preset-tonal"
 	aria-label="YouTube Link"
 	target="_blank"
