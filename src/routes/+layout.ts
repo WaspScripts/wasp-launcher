@@ -2,7 +2,7 @@ import { load as storeLoad } from "@tauri-apps/plugin-store"
 import { getProfile, getSession, getUser, supabase } from "$lib/supabase"
 import { error } from "@sveltejs/kit"
 import { invoke } from "@tauri-apps/api/core"
-import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
+import { assetsURLStore, devAssetsURLStore, devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 import { listen } from "@tauri-apps/api/event"
 import { channelManager } from "$lib/communication.svelte"
 import { invalidate } from "$app/navigation"
@@ -23,9 +23,11 @@ export const load = async ({ depends, url: { searchParams } }) => {
 		}),
 		getProfile(getUser()),
 		invoke("get_executable_path", { exe: "simba" }) as Promise<string>,
-		invoke("get_executable_path", { exe: "devsimba" }) as Promise<string>,
+    invoke("get_executable_path", { exe: "devsimba" }) as Promise<string>,
 		invoke("get_dev_mode") as Promise<boolean>,
-		invoke("get_dev_updates") as Promise<boolean>
+    invoke("get_dev_updates") as Promise<boolean>,
+    invoke("get_assets_url") as Promise<string>,
+    invoke("get_dev_assets_url") as Promise<string>,
 	])
 
 	const settings = promises[1]
@@ -37,7 +39,9 @@ export const load = async ({ depends, url: { searchParams } }) => {
 
 	devPathStore.set(promises[4])
 	devModeStore.set(promises[5])
-	devUpdatesStore.set(promises[6])
+  devUpdatesStore.set(promises[6])
+  assetsURLStore.set(promises[7])
+  devAssetsURLStore.set(promises[7])
 
 	const unlisten = await listen<string>("process-finished", async (event) => {
 		const channel = Number(event.payload)

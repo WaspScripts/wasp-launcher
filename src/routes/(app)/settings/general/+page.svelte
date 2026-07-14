@@ -2,6 +2,8 @@
 	import { mdRenderer } from "$lib/markdown"
 	import { invoke } from "@tauri-apps/api/core"
 
+	import { assetsURLStore } from "$lib/store"
+
 	let deletingCache = $state(false)
 	async function deleteCache() {
 		deletingCache = true
@@ -30,6 +32,12 @@
 		reinstallingPlugins = true
 		await invoke("reinstall_plugins", { exe: "simba" })
 		reinstallingPlugins = false
+	}
+
+	async function updateAssetsURL(url: string) {
+		if (!url) return
+		await invoke("set_assets_url", { url })
+		assetsURLStore.set(url)
 	}
 
 	const info = `Here you can reset several things related to your Simba install that could have gone bad.
@@ -95,5 +103,17 @@ If you keep having issues, it's recommened you close all of your runescape clien
 		>
 			Reinstall plugins
 		</button>
+	</div>
+
+	<div class="flex">
+    	<label class="mx-auto label-text">
+    		Assets URL:
+    		<input
+    			class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
+    			bind:value={$assetsURLStore}
+    			onchange={async () => await updateAssetsURL($assetsURLStore)}
+
+    		/>
+    	</label>
 	</div>
 </main>

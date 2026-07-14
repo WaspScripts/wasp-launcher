@@ -27,6 +27,8 @@ struct LauncherVariables {
     devsimba: PathBuf,
     client: Option<WindowMatch>,
     dev_updates: bool,
+    assets_url: String,
+    dev_assets_url: String,
     scripts: Mutex<HashMap<u32, Arc<Mutex<Option<Child>>>>>,
 }
 
@@ -129,12 +131,30 @@ pub fn run() {
                 }
             };
 
+            let assets_url: String = match settings.get("assets_url") {
+                Some(value) => value.as_str().unwrap_or("").to_string(),
+                None => {
+                    settings.set("assets_url", "");
+                    String::new()
+                }
+            };
+
+            let dev_assets_url: String = match settings.get("dev_assets_url") {
+                Some(value) => value.as_str().unwrap_or("").to_string(),
+                None => {
+                    settings.set("dev_assets_url", "");
+                    String::new()
+                }
+            };
+
             app.manage(Mutex::new(LauncherVariables {
                 simba: simba_path.clone(),
                 devmode: devmode,
                 devsimba: get_path("devsimba", simba_path),
                 client: None,
                 dev_updates: dev_updates,
+                assets_url: assets_url,
+                dev_assets_url: dev_assets_url,
                 scripts: Mutex::new(HashMap::new()),
             }));
 
@@ -148,6 +168,10 @@ pub fn run() {
             commands::set_dev_updates,
             commands::get_executable_path,
             commands::set_executable_path,
+            commands::get_assets_url,
+            commands::set_assets_url,
+            commands::get_dev_assets_url,
+            commands::set_dev_assets_url,
             commands::run_executable,
             commands::run_script,
             commands::kill_script,

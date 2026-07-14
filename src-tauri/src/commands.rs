@@ -27,9 +27,9 @@ use crate::{
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
-pub fn get_dev_mode(launcher_vars: State<'_, Mutex<LauncherVariables>>) -> bool {
-    let launcher_vars = launcher_vars.lock().unwrap();
-    launcher_vars.devmode
+pub fn get_dev_mode(launcher: State<'_, Mutex<LauncherVariables>>) -> bool {
+    let launcher = launcher.lock().unwrap();
+    launcher.devmode
 }
 
 #[tauri::command]
@@ -81,14 +81,14 @@ pub fn get_executable_path(launcher: State<'_, Mutex<LauncherVariables>>, exe: S
 #[tauri::command]
 pub fn set_executable_path(
     app: tauri::AppHandle,
-    launcher_vars: State<'_, Mutex<LauncherVariables>>,
+    launcher: State<'_, Mutex<LauncherVariables>>,
     exe: String,
     path: String,
 ) {
-    let mut paths = launcher_vars.lock().unwrap();
+    let mut launcher = launcher.lock().unwrap();
     match exe.as_str() {
-        "simba" => paths.simba = PathBuf::from(path.clone()),
-        "devsimba" => paths.devsimba = PathBuf::from(path.clone()),
+        "simba" => launcher.simba = PathBuf::from(path.clone()),
+        "devsimba" => launcher.devsimba = PathBuf::from(path.clone()),
         _ => {}
     }
 
@@ -96,6 +96,48 @@ pub fn set_executable_path(
         .store("settings.json")
         .expect("Failed to retrieve settings.json store!");
     store.set("paths", json!({exe.as_str(): path}));
+}
+
+#[tauri::command]
+pub fn get_assets_url(launcher: State<'_, Mutex<LauncherVariables>>) -> String {
+    let launcher = launcher.lock().unwrap();
+    launcher.assets_url.clone()
+}
+
+#[tauri::command]
+pub fn set_assets_url(
+    app: tauri::AppHandle,
+    launcher: State<'_, Mutex<LauncherVariables>>,
+    url: String,
+) {
+    let mut launcher = launcher.lock().unwrap();
+    launcher.assets_url = url.clone();
+
+    let store = app
+        .store("settings.json")
+        .expect("Failed to retrieve settings.json store!");
+    store.set("assets_url", url.clone());
+}
+
+#[tauri::command]
+pub fn get_dev_assets_url(launcher: State<'_, Mutex<LauncherVariables>>) -> String {
+    let launcher = launcher.lock().unwrap();
+    launcher.dev_assets_url.clone()
+}
+
+#[tauri::command]
+pub fn set_dev_assets_url(
+    app: tauri::AppHandle,
+    launcher: State<'_, Mutex<LauncherVariables>>,
+    url: String,
+) {
+    let mut launcher = launcher.lock().unwrap();
+    launcher.dev_assets_url = url.clone();
+
+    let store = app
+        .store("settings.json")
+        .expect("Failed to retrieve settings.json store!");
+    store.set("dev_assets_url", url.clone());
 }
 
 #[tauri::command]

@@ -3,7 +3,7 @@
 	import { open } from "@tauri-apps/plugin-dialog"
 	import { Switch } from "@skeletonlabs/skeleton-svelte"
 	import { mdRenderer } from "$lib/markdown"
-	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
+	import { devAssetsURLStore, devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 
 	async function setDevMode(state: boolean) {
 		await invoke("set_dev_mode", { state })
@@ -62,6 +62,12 @@
 		reinstallingPlugins = false
 	}
 
+	async function updateAssetsURL(url: string) {
+		if (!url) return
+		await invoke("set_dev_assets_url", { url })
+		devAssetsURLStore.set(url)
+	}
+
 	const info = `### This section is only for people that are interested in development.
 This exists to automate installation and/or updates to Simba regarding how it's used in WaspScripts.
 
@@ -76,9 +82,9 @@ You can change your development folder below (it's recommended you create the fo
 Also while on this tab, the buttons below will affect your development path.`
 </script>
 
-<main class="mx-12 flex flex-col gap-6">
+<main class="mx-12 flex flex-col gap-4">
 	<div
-		class="mx-auto prose h-80 w-full min-w-full overflow-y-scroll rounded-md preset-outlined-surface-300-700 p-8 dark:prose-invert"
+		class="mx-auto prose h-72 w-full min-w-full overflow-y-scroll rounded-md preset-outlined-surface-300-700 p-6 dark:prose-invert"
 	>
 		{@html mdRenderer.render(info)}
 	</div>
@@ -173,5 +179,17 @@ Also while on this tab, the buttons below will affect your development path.`
 		>
 			Reinstall plugins
 		</button>
+	</div>
+
+	<div class="flex">
+	    <label class="mx-auto label-text">
+    		Assets URL:
+    		<input
+    			class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
+    			bind:value={$devAssetsURLStore}
+    			onchange={async () => await updateAssetsURL($devAssetsURLStore)}
+
+    		/>
+    	</label>
 	</div>
 </main>

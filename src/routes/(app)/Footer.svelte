@@ -9,6 +9,7 @@
 	import { RefreshCw, SquaresSubtract } from "@lucide/svelte"
 	import { channelManager } from "$lib/communication.svelte"
 	import { goto } from "$app/navigation"
+	import { assetsURLStore } from "$lib/store"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -100,7 +101,8 @@
 			version.wasplib,
 			script.id,
 			script.protected.revision.toString(),
-			refreshToken
+			refreshToken,
+			$assetsURLStore
 		]
 
 		const channel = await channelManager.createChannel(script.title)

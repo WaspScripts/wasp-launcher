@@ -252,7 +252,7 @@ pub fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
 pub async fn run_simba(path: PathBuf, args: Vec<String>) {
     println!("Attempt to run Simba from: {:?}", path);
 
-    if args.len() != 6 {
+    if args.len() != 7 {
         panic!("Expected 6 arguments, but got {}", args.len());
     }
 
@@ -310,7 +310,8 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         .arg(script_file)
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
-        .env("WASP_REFRESH_TOKEN", &args[5]);
+        .env("WASP_REFRESH_TOKEN", &args[5])
+        .env("assets", &args[6]);
 
     if args[1] != "latest" {
         cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
