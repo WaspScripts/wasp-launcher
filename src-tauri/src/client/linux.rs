@@ -1,12 +1,180 @@
-pub fn list_processes() {
-    if let Ok(entries) = fs::read_dir("/proc") {
-        for entry in entries.flatten() {
-            let s_name = entry.file_name().to_string_lossy().into_owned();
-            if s_name.chars().all(|c| c.is_numeric()) {
-                if let Ok(comm) = fs::read_to_string(format!("/proc/{}/comm", s_name)) {
-                    println!("PID: {} | Name: {}", s_name, comm.trim());
-                }
+use std::{error::Error, fs};
+
+use serde::{Deserialize, Serialize};
+use x11rb::{
+    connection::Connection,
+    protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt, EventMask, MapState, Window},
+    rust_connection::RustConnection,
+    CURRENT_TIME,
+};
+
+// Every AWT toplevel on X11 gets a tiny focus proxy child window with this class.
+const FOCUS_PROXY_CLASS: &str = "FocusProxy";
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WindowMatch {
+    pid: u32,
+    pub(crate) hwnd: isize,
+    name: String,
+}
+
+pub fn list_processes() -> Result<Vec<WindowMatch>, String> {
+    find_canvases().map_err(|e| e.to_string())
+}
+
+fn find_canvases() -> Result<Vec<WindowMatch>, Box<dyn Error>> {
+    let (conn, screen_num) = x11rb::connect(None)?;
+    let root = conn.setup().roots[screen_num].root;
+    let net_wm_pid = intern_atom(&conn, b"_NET_WM_PID")?;
+
+    let mut matches = Vec::new();
+    walk_tree(&conn, root, net_wm_pid, &mut matches)?;
+    Ok(matches)
+}
+
+fn walk_tree(
+    conn: &RustConnection,
+    window: Window,
+    net_wm_pid: u32,
+    matches: &mut Vec<WindowMatch>,
+) -> Result<(), Box<dyn Error>> {
+    for child in conn.query_tree(window)?.reply()?.children {
+        let Some(pid) = get_pid(conn, child, net_wm_pid) else {
+            // Not a client window (e.g. a window manager frame), look inside it.
+            // Windows can vanish mid-walk, that shouldn't abort the whole listing.
+            let _ = walk_tree(conn, child, net_wm_pid, matches);
+            continue;
+        };
+
+        if matches.iter().any(|m| m.pid == pid) || !is_java_window(conn, child) {
+            continue;
+        }
+
+        if let Some(canvas) = find_canvas(conn, child, 0).map(|(w, _)| w) {
+            matches.push(WindowMatch {
+                pid,
+                hwnd: canvas as isize,
+                name: process_name(pid),
+            });
+        }
+    }
+    Ok(())
+}
+
+fn is_java_window(conn: &RustConnection, window: Window) -> bool {
+    let Ok(Ok(tree)) = conn.query_tree(window).map(|c| c.reply()) else {
+        return false;
+    };
+    tree.children
+        .iter()
+        .any(|&child| get_wm_class(conn, child).as_deref() == Some(FOCUS_PROXY_CLASS))
+}
+
+// Java gives every heavyweight component its own X window but they all share the
+// same WM_CLASS, so the game canvas is found by structure instead. It's the deepest
+// visible window that is at least toplevel -> content window -> canvas deep.
+fn find_canvas(conn: &RustConnection, window: Window, depth: u32) -> Option<(Window, u32)> {
+    let mut best = None;
+
+    if depth >= 2 && is_large_and_visible(conn, window) {
+        best = Some((window, depth));
+    }
+
+    let children = conn.query_tree(window).ok()?.reply().ok()?.children;
+    for child in children {
+        if let Some(found) = find_canvas(conn, child, depth + 1) {
+            if best.map_or(true, |(_, d)| found.1 > d) {
+                best = Some(found);
             }
         }
     }
+
+    best
+}
+
+fn is_large_and_visible(conn: &RustConnection, window: Window) -> bool {
+    let viewable = match conn.get_window_attributes(window).map(|c| c.reply()) {
+        Ok(Ok(attributes)) => attributes.map_state == MapState::VIEWABLE,
+        _ => false,
+    };
+
+    viewable
+        && match conn.get_geometry(window).map(|c| c.reply()) {
+            Ok(Ok(geometry)) => geometry.width > 100 && geometry.height > 100,
+            _ => false,
+        }
+}
+
+fn get_wm_class(conn: &RustConnection, window: Window) -> Option<String> {
+    let reply = conn
+        .get_property(false, window, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 256)
+        .ok()?
+        .reply()
+        .ok()?;
+
+    // WM_CLASS is "instance\0class\0".
+    let class = reply.value.split(|&b| b == 0).nth(1)?;
+    Some(String::from_utf8_lossy(class).into_owned())
+}
+
+fn get_pid(conn: &RustConnection, window: Window, net_wm_pid: u32) -> Option<u32> {
+    conn.get_property(false, window, net_wm_pid, AtomEnum::CARDINAL, 0, 1)
+        .ok()?
+        .reply()
+        .ok()?
+        .value32()?
+        .next()
+}
+
+fn process_name(pid: u32) -> String {
+    fs::read_to_string(format!("/proc/{}/comm", pid))
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|_| pid.to_string())
+}
+
+fn intern_atom(conn: &RustConnection, name: &[u8]) -> Result<u32, Box<dyn Error>> {
+    Ok(conn.intern_atom(false, name)?.reply()?.atom)
+}
+
+pub fn bring_window_to_top(handle: isize) -> bool {
+    activate_window(handle as Window).is_ok()
+}
+
+fn activate_window(window: Window) -> Result<(), Box<dyn Error>> {
+    let (conn, screen_num) = x11rb::connect(None)?;
+    let root = conn.setup().roots[screen_num].root;
+    let wm_state = intern_atom(&conn, b"WM_STATE")?;
+    let net_active_window = intern_atom(&conn, b"_NET_ACTIVE_WINDOW")?;
+
+    // Walk up to the client toplevel (the one the window manager put WM_STATE on).
+    let mut current = window;
+    let mut toplevel = window;
+    loop {
+        let has_state = conn
+            .get_property(false, current, wm_state, AtomEnum::ANY, 0, 0)?
+            .reply()?
+            .type_
+            != u32::from(AtomEnum::NONE);
+        if has_state {
+            toplevel = current;
+        }
+
+        let parent = conn.query_tree(current)?.reply()?.parent;
+        if parent == root || parent == x11rb::NONE {
+            break;
+        }
+        current = parent;
+    }
+
+    // EWMH activation request, this also de-iconifies the window.
+    let event =
+        ClientMessageEvent::new(32, toplevel, net_active_window, [1, CURRENT_TIME, 0, 0, 0]);
+    conn.send_event(
+        false,
+        root,
+        EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY,
+        event,
+    )?;
+    conn.flush()?;
+    Ok(())
 }

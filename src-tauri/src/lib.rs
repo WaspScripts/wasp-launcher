@@ -81,7 +81,9 @@ pub fn run() {
             let handle = app.handle().clone();
             if !tauri::is_dev() {
                 tauri::async_runtime::spawn(async move {
-                    update_launcher(handle).await.unwrap();
+                    if let Err(e) = update_launcher(handle).await {
+                        eprintln!("Failed to update the launcher: {}", e);
+                    }
                 });
             }
 

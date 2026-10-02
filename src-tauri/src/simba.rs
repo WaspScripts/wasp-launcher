@@ -38,14 +38,17 @@ async fn download_and_unzip_file(
     let cursor = Cursor::new(response);
     let mut archive = ZipArchive::new(cursor)?;
 
-    if archive.len() != 1 {
-        return Err(format!("Expected 1 file in ZIP, found {}", archive.len()).into());
+    let files: Vec<String> = archive
+        .file_names()
+        .filter(|name| !name.ends_with('/'))
+        .map(String::from)
+        .collect();
+
+    if files.len() != 1 {
+        return Err(format!("Expected 1 file in ZIP, found {}", files.len()).into());
     }
 
-    let mut file = archive.by_index(0)?;
-    if file.name().ends_with('/') {
-        return Err("Unexpected directory in zip".into());
-    }
+    let mut file = archive.by_name(&files[0])?;
 
     // Ensure parent directory exists
     if let Some(parent) = dest.parent() {
@@ -55,6 +58,12 @@ async fn download_and_unzip_file(
     // Write the file using `dest` as the output path
     let mut out_file = File::create(dest)?;
     std::io::copy(&mut file, &mut out_file)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o755))?;
+    }
 
     Ok(())
 }
@@ -249,26 +258,22 @@ pub fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
     Ok(())
 }
 
-pub async fn run_simba(path: PathBuf, args: Vec<String>) {
-    println!("Attempt to run Simba from: {:?}", path);
+const SIMBA_ARCHIVE_URL: &str =
+    "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
 
-    if args.len() != 7 {
-        panic!("Expected 6 arguments, but got {}", args.len());
-    }
+async fn fetch_simba_archive() -> String {
+    let res = reqwest::get(SIMBA_ARCHIVE_URL)
+        .await
+        .expect("Failed to fetch README.md");
+    res.text().await.expect("Failed to read response text")
+}
 
-    const URL: &'static str =
-        "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
-
-    let commit = if args[1] == "latest" {
+async fn ensure_simba_executable(path: &Path, version: &str) -> PathBuf {
+    let commit = if version == "latest" {
         println!("Finding latest Simba available");
 
-        let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
-        let text = res.text().await.expect("Failed to read response text");
-        let body = Some(text);
-
+        let body = fetch_simba_archive().await;
         let line = body
-            .as_ref()
-            .unwrap()
             .lines()
             .find(|l| l.contains("| simba2000 |"))
             .expect("Branch not found in README.md");
@@ -283,21 +288,60 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
             .expect("Failed to parse commit")
             .to_string()
     } else {
-        args[1].to_string()
+        version.to_string()
     };
 
-    let exe_path = path.join(format!("Simba-{}.exe", commit));
+    let exe_name = format!("Simba-{}{}", commit, std::env::consts::EXE_SUFFIX);
+    let exe_path = path.join(&exe_name);
 
     if !exe_path.exists() {
-        println!("Downloading Simba-{}.exe", commit);
-        let url = format!(
-            "{}storage/v1/object/simba/{}/win64.zip",
-            SUPABASE_URL, commit
-        );
+        println!("Downloading {}", exe_name);
+        let url = simba_download_url(&commit).await;
         download_and_unzip_file(&url, &exe_path)
             .await
-            .expect(&format!("Failed to download or unzip simba-{}.exe", commit));
+            .expect(&format!("Failed to download or unzip {}", exe_name));
     }
+
+    exe_path
+}
+
+#[cfg(target_os = "windows")]
+async fn simba_download_url(commit: &str) -> String {
+    format!(
+        "{}storage/v1/object/simba/{}/win64.zip",
+        SUPABASE_URL, commit
+    )
+}
+
+#[cfg(target_os = "linux")]
+async fn simba_download_url(commit: &str) -> String {
+    // Linux builds aren't mirrored on supabase, so get them from the build archive itself.
+    let file = if cfg!(target_arch = "aarch64") {
+        "Simba_linux_aarch64.zip"
+    } else {
+        "Simba_linux_x86_64.zip"
+    };
+
+    let body = fetch_simba_archive().await;
+    let line = body
+        .lines()
+        .find(|l| l.contains(&format!("[{}]", commit)))
+        .expect(&format!("Simba {} not found in README.md", commit));
+
+    line.split(|c| c == '(' || c == ')')
+        .find(|s| s.starts_with("https://") && s.ends_with(file))
+        .expect(&format!("No Linux build found for Simba {}", commit))
+        .to_string()
+}
+
+pub async fn run_simba(path: PathBuf, args: Vec<String>) {
+    println!("Attempt to run Simba from: {:?}", path);
+
+    if args.len() != 7 {
+        panic!("Expected 6 arguments, but got {}", args.len());
+    }
+
+    let exe_path = ensure_simba_executable(&path, &args[1]).await;
 
     if args[2] != "none" {
         let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
@@ -336,48 +380,7 @@ pub async fn run_simba_script(
         return Err(format!("Expected 6 arguments, but got {}", args.len()));
     }
 
-    const URL: &'static str =
-        "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
-
-    let commit = if args[1] == "latest" {
-        println!("Finding latest Simba available");
-
-        let res = reqwest::get(URL).await.expect("Failed to fetch README.md");
-        let text = res.text().await.expect("Failed to read response text");
-        let body = Some(text);
-
-        let line = body
-            .as_ref()
-            .unwrap()
-            .lines()
-            .find(|l| l.contains("| simba2000 |"))
-            .expect("Branch not found in README.md");
-
-        let parts: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
-        let commit_col = parts.get(2).expect("No commit column found");
-
-        commit_col
-            .split(']')
-            .next()
-            .and_then(|s| s.strip_prefix('['))
-            .expect("Failed to parse commit")
-            .to_string()
-    } else {
-        args[1].to_string()
-    };
-
-    let exe_path = path.join(format!("Simba-{}.exe", commit));
-
-    if !exe_path.exists() {
-        println!("Downloading Simba-{}.exe", commit);
-        let url = format!(
-            "{}storage/v1/object/simba/{}/win64.zip",
-            SUPABASE_URL, commit
-        );
-        download_and_unzip_file(&url, &exe_path)
-            .await
-            .expect(&format!("Failed to download or unzip simba-{}.exe", commit));
-    }
+    let exe_path = ensure_simba_executable(&path, &args[1]).await;
 
     if args[2] != "none" {
         let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
