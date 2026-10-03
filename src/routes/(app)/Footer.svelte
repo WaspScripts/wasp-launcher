@@ -1,15 +1,17 @@
 <script lang="ts">
-	import { Portal, Tooltip } from "@skeletonlabs/skeleton-svelte"
+	import { Popover, Portal, Tooltip } from "@skeletonlabs/skeleton-svelte"
 	import { invoke } from "@tauri-apps/api/core"
 	import type { ScriptEx } from "$lib/types/collection"
 	import { page } from "$app/state"
 	import type { Session, SupabaseClient } from "@supabase/supabase-js"
 	import type { Database } from "$lib/types/supabase"
 	import { fetch } from "@tauri-apps/plugin-http"
-	import { RefreshCw, SquaresSubtract } from "@lucide/svelte"
+	import { RefreshCw, Share2, SquaresSubtract } from "@lucide/svelte"
 	import { channelManager } from "$lib/communication.svelte"
 	import { goto } from "$app/navigation"
 	import { assetsURLStore } from "$lib/store"
+	import { MediaQuery } from "svelte/reactivity"
+	import type { Component } from "svelte"
 
 	let data = $props()
 	let script: ScriptEx = $derived(data.script)
@@ -117,6 +119,10 @@
 	let lazyDiscord = import("./Footer/Discord.svelte")
 	let lazyYouTube = import("./Footer/YouTube.svelte")
 
+	// tailwind's `md` and `lg` breakpoints
+	const md = new MediaQuery("min-width: 48rem")
+	const lg = new MediaQuery("min-width: 64rem")
+
 	interface ClientWindow {
 		pid: number
 		hwnd: number
@@ -126,56 +132,55 @@
 </script>
 
 <footer
-	class="sticky bottom-0 flex justify-between bg-surface-200/30 p-4 text-base font-semibold backdrop-blur-md dark:bg-surface-800/30"
+	class="sticky bottom-0 flex justify-between gap-2 bg-surface-200/30 p-2 text-base font-semibold backdrop-blur-md md:p-4 dark:bg-surface-800/30"
 >
-	<div class="flex gap-2">
-		{#await lazyGithub then { default: LazyGithub }}
+	{#snippet social(lazy: Promise<{ default: Component }>, label: string)}
+		{#await lazy then { default: Icon }}
 			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
 				<Tooltip.Trigger>
-					<LazyGithub />
+					<Icon />
 				</Tooltip.Trigger>
 				<Portal>
 					<Tooltip.Positioner>
-						<Tooltip.Content class="card preset-filled p-4">Source code</Tooltip.Content>
+						<Tooltip.Content class="card preset-filled p-4">{label}</Tooltip.Content>
 					</Tooltip.Positioner>
 				</Portal>
 			</Tooltip>
 		{/await}
+	{/snippet}
 
-		{#await lazyDiscord then { default: LazyDiscord }}
-			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-				<Tooltip.Trigger>
-					<LazyDiscord />
-				</Tooltip.Trigger>
-				<Portal>
-					<Tooltip.Positioner>
-						<Tooltip.Content class="card preset-filled p-4"
-							>Join the Discord community!</Tooltip.Content
-						>
-					</Tooltip.Positioner>
-				</Portal>
-			</Tooltip>
-		{/await}
-		{#await lazyYouTube then { default: LazyYouTube }}
-			<Tooltip positioning={{ placement: "top" }} openDelay={1000}>
-				<Tooltip.Trigger>
-					<LazyYouTube />
-				</Tooltip.Trigger>
-				<Portal>
-					<Tooltip.Positioner>
-						<Tooltip.Content class="card preset-filled p-4">YouTube channel</Tooltip.Content>
-					</Tooltip.Positioner>
-				</Portal>
-			</Tooltip>
-		{/await}
-	</div>
+	{#snippet socials()}
+		{@render social(lazyGithub, "Source code")}
+		{@render social(lazyDiscord, "Join the Discord community!")}
+		{@render social(lazyYouTube, "YouTube channel")}
+	{/snippet}
+
+	{#if md.current}
+		<div class="flex gap-2">
+			{@render socials()}
+		</div>
+	{:else}
+		<Popover positioning={{ placement: "top-start" }}>
+			<Popover.Trigger class="my-auto btn h-8 hover:preset-tonal" aria-label="Community links">
+				<Share2 size={20} />
+			</Popover.Trigger>
+			<Portal>
+				<Popover.Positioner>
+					<Popover.Content class="flex gap-2 card bg-surface-100-900 p-2 shadow-xl">
+						{@render socials()}
+					</Popover.Content>
+				</Popover.Positioner>
+			</Portal>
+		</Popover>
+	{/if}
 
 	{#if script}
-		<div class="flex gap-2">
+		<div class="flex min-w-0 gap-2">
 			{#if script.access}
 				<div class="input-group h-8 grid-cols-[auto_1fr_auto]">
 					<button
 						class="group ig-cell gap-2 hover:preset-tonal"
+						title={lg.current ? undefined : "Refresh clients"}
 						onclick={async () => {
 							client = -1
 							clientsPromise = invoke("list_clients") as Promise<ClientWindow[]>
@@ -183,7 +188,7 @@
 						}}
 					>
 						<span
-							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300 group-hover:max-w-32 group-hover:opacity-100"
+							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300 lg:group-hover:max-w-32 lg:group-hover:opacity-100"
 						>
 							Refresh clients
 						</span>
@@ -193,13 +198,14 @@
 					<button
 						class="group ig-cell gap-2 enabled:hover:preset-tonal"
 						disabled={client < 0}
+						title={lg.current ? undefined : "Show client"}
 						onclick={async () => {
 							await invoke("show_client")
 						}}
 					>
 						<span
 							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300
-							group-enabled:group-hover:max-w-32 group-enabled:group-hover:opacity-100"
+							lg:group-enabled:group-hover:max-w-32 lg:group-enabled:group-hover:opacity-100"
 						>
 							Show client
 						</span>
@@ -208,14 +214,15 @@
 
 					<select
 						id="client"
-						class="select ig-select w-48 rounded-l-none hover:preset-tonal"
+						class="select ig-select w-32 rounded-l-none hover:preset-tonal md:w-40 lg:w-48"
 						bind:value={client}
 						onchange={async () => {
 							const clients = await clientsPromise
 							await invoke("set_client", { client: clients[client] })
 						}}
 					>
-						<option value={-1} disabled selected>Select a client</option>
+						<option value={-1} disabled selected>{lg.current ? "Select a client" : "Client"}</option
+						>
 						{#await clientsPromise then clients}
 							{#each clients as clnt, idx}
 								<option value={idx}>
@@ -226,10 +233,14 @@
 					</select>
 				</div>
 
-				<select id="revision" class="select w-44 hover:preset-tonal" bind:value={revision}>
+				<select
+					id="revision"
+					class="select w-28 hover:preset-tonal md:w-36 lg:w-44"
+					bind:value={revision}
+				>
 					{#await versionsPromise then versions}
 						{#each versions as version, idx}
-							<option value={idx}>Revision {version.revision}</option>
+							<option value={idx}>{lg.current ? "Revision" : "Rev."} {version.revision}</option>
 						{/each}
 					{/await}
 				</select>

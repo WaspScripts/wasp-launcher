@@ -112,9 +112,10 @@ pub fn run() {
             let _ = simba::ensure_simba_directories(&simba_path);
 
             let plugins_path = simba_path.join("Plugins").join("wasp-plugins");
+            let plugins_app = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 println!("Started plugins async thread!");
-                let _ = simba::sync_plugins_repo(&plugins_path).await;
+                let _ = simba::sync_plugins_repo(&plugins_app, &plugins_path).await;
             });
 
             let devmode: bool = match settings.get("devmode") {

@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tauri::{
     http::{HeaderMap, HeaderValue},
     ipc::Channel,
-    Error,
+    AppHandle, Error,
 };
 use tauri_plugin_http::reqwest::{self, Client};
 use zip::ZipArchive;
@@ -68,12 +68,45 @@ async fn download_and_unzip_file(
     Ok(())
 }
 
+type BoxError = Box<dyn std::error::Error + Send + Sync>;
+
+// Extracts `zip_path` into `dest`, dropping the first `strip_components` folders of every entry.
+fn extract_zip(zip_path: &Path, dest: &Path, strip_components: usize) -> Result<(), BoxError> {
+    let mut archive = ZipArchive::new(File::open(zip_path)?)?;
+    create_dir_all(dest)?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let Some(name) = file.enclosed_name() else {
+            continue;
+        };
+
+        let relative: PathBuf = name.components().skip(strip_components).collect();
+        if relative.as_os_str().is_empty() {
+            continue;
+        }
+
+        let out_path = dest.join(relative);
+        if file.is_dir() {
+            create_dir_all(&out_path)?;
+        } else {
+            if let Some(parent) = out_path.parent() {
+                create_dir_all(parent)?;
+            }
+            let mut outfile = File::create(&out_path)?;
+            std::io::copy(&mut file, &mut outfile)?;
+        }
+    }
+
+    Ok(())
+}
+
 async fn download_and_unzip_dir(
     path: PathBuf,
     dest: &str,
     db_path: &str,
     src: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), BoxError> {
     let final_path = path.join(dest);
     let zip_path = path.join(format!("{}.zip", src));
 
@@ -103,25 +136,7 @@ async fn download_and_unzip_dir(
     }
 
     println!("Extracting {} to {:?}", zip_path.display(), final_path);
-    let file = File::open(&zip_path)?;
-    let mut archive = ZipArchive::new(file)?;
-
-    create_dir_all(&final_path)?;
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let out_path = final_path.join(file.name());
-
-        if file.is_dir() {
-            create_dir_all(&out_path)?;
-        } else {
-            if let Some(parent) = out_path.parent() {
-                create_dir_all(parent)?;
-            }
-            let mut outfile = File::create(&out_path)?;
-            std::io::copy(&mut file, &mut outfile)?;
-        }
-    }
+    extract_zip(&zip_path, &final_path, 0)?;
 
     println!("{}.zip extracted to {:?}", src, path);
 
@@ -220,7 +235,7 @@ async fn fetch_plugins_version() -> Result<String, Box<dyn std::error::Error>> {
     }
 }
 
-pub async fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), Error> {
+pub async fn sync_plugins_repo(app: &AppHandle, plugins_path: &PathBuf) -> Result<(), Error> {
     let current = read_plugins_version(&plugins_path.join("version.simba"))?;
     println!("Current plugins version: {}", current);
 
@@ -228,16 +243,70 @@ pub async fn sync_plugins_repo(plugins_path: &PathBuf) -> Result<(), Error> {
         .await
         .expect("Failed to fetch latest plugin versions");
     println!("Latest plugins version: {}", latest);
-    if current == latest {
-        return Ok(());
+    if current != latest {
+        // Not `join("..")`: unlike Windows, Linux can't resolve ".." through the
+        // wasp-plugins directory when it doesn't exist (yet, or after being removed).
+        let parent_dir = plugins_path
+            .parent()
+            .expect("wasp-plugins path has no parent")
+            .to_path_buf();
+        if let Err(e) = download_and_unzip_dir(parent_dir, "wasp-plugins", "plugins", &latest).await
+        {
+            eprintln!("Failed to install wasp-plugins {}: {}", latest, e);
+        }
     }
 
-    let parent_dir = plugins_path.join("..");
-    let _ =
-        download_and_unzip_dir(parent_dir.to_path_buf(), "wasp-plugins", "plugins", &latest).await;
+    // Ran on every sync so installing patchelf later fixes an already up to date install.
+    clear_remote_input_execstack(app, plugins_path);
 
     Ok(())
 }
+
+// RemoteInput's library requests an executable stack, which newer glibc versions
+// refuse to load, so the flag has to be cleared with patchelf.
+#[cfg(target_os = "linux")]
+fn clear_remote_input_execstack(app: &AppHandle, plugins_path: &Path) {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+
+    let lib = plugins_path
+        .join("libremoteinput")
+        .join("libremoteinput64.so");
+    if !lib.exists() {
+        return;
+    }
+
+    let result = std::process::Command::new("patchelf")
+        .arg("--clear-execstack")
+        .arg(&lib)
+        .output();
+
+    let message = match result {
+        Ok(output) if output.status.success() => return,
+        Ok(output) => format!(
+            "patchelf failed to patch {}:\n\n{}\n\nRemoteInput won't work until this is fixed. \
+             Make sure your patchelf is version 0.18 or newer.",
+            lib.display(),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            "RemoteInput needs patchelf to work on Linux but it's not installed.\n\n\
+             Install it with your package manager (e.g. \"sudo pacman -S patchelf\" or \
+             \"sudo apt install patchelf\") and restart the launcher."
+                .to_string()
+        }
+        Err(e) => format!("Failed to run patchelf: {}", e),
+    };
+
+    eprintln!("{}", message);
+    app.dialog()
+        .message(message)
+        .title("patchelf required")
+        .kind(MessageDialogKind::Warning)
+        .show(|_| {});
+}
+
+#[cfg(not(target_os = "linux"))]
+fn clear_remote_input_execstack(_app: &AppHandle, _plugins_path: &Path) {}
 
 pub fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
     create_dir_all(path)?;
@@ -334,6 +403,87 @@ async fn simba_download_url(commit: &str) -> String {
         .to_string()
 }
 
+const CACHE_READER_PATH: &str = "utils/cache-reader";
+
+#[derive(Deserialize)]
+struct GitHubContent {
+    sha: String,
+}
+
+// WaspLib zips are made with `git archive`, which leaves submodules out, so the
+// cache-reader commit pinned by this WaspLib version is downloaded separately.
+async fn download_cache_reader(includes: PathBuf, version: String) -> Result<PathBuf, BoxError> {
+    let zip_path = includes.join(format!("cache-reader-{}.zip", version));
+    if version != "latest" && zip_path.exists() {
+        return Ok(zip_path);
+    }
+
+    // Every WaspLib version is a tag, "latest" is the head of the release branch.
+    let git_ref = if version == "latest" {
+        "release"
+    } else {
+        &version
+    };
+    let url = format!(
+        "https://api.github.com/repos/WaspScripts/WaspLib/contents/{}?ref={}",
+        CACHE_READER_PATH, git_ref
+    );
+
+    let client = Client::new();
+    let body = client
+        .get(&url)
+        .header("User-Agent", "wasp-launcher")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+    let submodule: GitHubContent = serde_json::from_str(&body)?;
+
+    let url = format!(
+        "https://github.com/WaspScripts/cache-reader/archive/{}.zip",
+        submodule.sha
+    );
+    println!("Downloading cache-reader {} from {}", submodule.sha, url);
+
+    let response = client
+        .get(&url)
+        .header("User-Agent", "wasp-launcher")
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
+
+    write(&zip_path, &response)?;
+    Ok(zip_path)
+}
+
+async fn install_wasplib(path: &Path, version: &str) {
+    let includes = path.join("Includes");
+    let cache_reader =
+        tauri::async_runtime::spawn(download_cache_reader(includes.clone(), version.to_string()));
+
+    if let Err(e) = download_and_unzip_dir(includes.clone(), "WaspLib", "wasplib", version).await {
+        eprintln!("Failed to install WaspLib {}: {}", version, e);
+        return;
+    }
+
+    let zip_path = match cache_reader.await {
+        Ok(Ok(zip_path)) => zip_path,
+        Ok(Err(e)) => return eprintln!("Failed to download cache-reader: {}", e),
+        Err(e) => return eprintln!("Failed to download cache-reader: {}", e),
+    };
+
+    // GitHub archives wrap everything in a "cache-reader-<sha>" folder.
+    let dest = includes.join("WaspLib").join(CACHE_READER_PATH);
+    println!("Extracting {} to {:?}", zip_path.display(), dest);
+    if let Err(e) = extract_zip(&zip_path, &dest, 1) {
+        eprintln!("Failed to extract cache-reader: {}", e);
+    }
+}
+
 pub async fn run_simba(path: PathBuf, args: Vec<String>) {
     println!("Attempt to run Simba from: {:?}", path);
 
@@ -344,7 +494,7 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
     let exe_path = ensure_simba_executable(&path, &args[1]).await;
 
     if args[2] != "none" {
-        let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
+        install_wasplib(&path, &args[2]).await;
     }
 
     let script_file = path.join("Scripts").join(&args[0]);
@@ -383,7 +533,7 @@ pub async fn run_simba_script(
     let exe_path = ensure_simba_executable(&path, &args[1]).await;
 
     if args[2] != "none" {
-        let _ = download_and_unzip_dir(path.join("Includes"), "WaspLib", "wasplib", &args[2]).await;
+        install_wasplib(&path, &args[2]).await;
     }
 
     let script_file: String = path

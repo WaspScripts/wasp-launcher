@@ -253,6 +253,7 @@ pub fn save_blob(
 
 #[tauri::command]
 pub async fn run_executable(
+    app: tauri::AppHandle,
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
     args: Vec<String>,
@@ -279,7 +280,7 @@ pub async fn run_executable(
             let _ = ensure_simba_directories(&path);
             let plugins_path = path.join("Plugins").join("wasp-plugins");
             tauri::async_runtime::spawn(async move {
-                let _ = sync_plugins_repo(&plugins_path);
+                let _ = sync_plugins_repo(&app, &plugins_path).await;
             });
         };
 
@@ -465,6 +466,7 @@ pub fn get_plugin_version(
 
 #[tauri::command]
 pub async fn reinstall_plugins(
+    app: tauri::AppHandle,
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
 ) -> tauri::Result<()> {
@@ -485,7 +487,7 @@ pub async fn reinstall_plugins(
         println!("Deleted folder: {:?}", plugins_path);
     }
 
-    let _ = sync_plugins_repo(&plugins_path).await;
+    let _ = sync_plugins_repo(&app, &plugins_path).await;
 
     Ok(())
 }

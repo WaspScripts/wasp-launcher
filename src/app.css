@@ -12,6 +12,14 @@
 
 @import "@skeletonlabs/skeleton-svelte";
 
+/* Slightly smaller text below tailwind's `lg` breakpoint (themes use 1.067 by default) */
+@media (width < 64rem) {
+	[data-theme] {
+		--text-scaling: 1;
+		--base-font-size: 0.9375rem;
+	}
+}
+
 @layer utilities {
 	/* Hide scrollbar for Chrome, Safari and Opera */
 	.hide-scrollbar::-webkit-scrollbar {
