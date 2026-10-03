@@ -73,29 +73,26 @@
 		const versions = await versionsPromise
 		const version = versions[revision]
 
-		let promises = []
-		promises.push(getNewSessionToken())
-
 		const scriptName = script.url + "-rev-" + version.revision
 		const mainFile = scriptName + "/" + scriptName + ".simba"
 
-		for (let i = 0; i < version.files.length; i++) {
-			const filepath = script.id + "/" + pad(version.revision, 9) + "/" + version.files[i]
+		const downloads = version.files.map(async (filename) => {
+			const filepath = script.id + "/" + pad(version.revision, 9) + "/" + filename
 			console.log("Downloading file:", filepath)
 			const { data, error: err } = await supabase.storage.from("scripts").download(filepath)
 
 			if (err) {
 				console.error(err)
-				return
+				return false
 			}
 
-			const file = version.files[i] == "script.simba" ? scriptName + ".simba" : version.files[i]
-			promises.push(saveBlobToFile(data, scriptName, file))
-		}
+			const file = filename == "script.simba" ? scriptName + ".simba" : filename
+			await saveBlobToFile(data, scriptName, file)
+			return true
+		})
 
-		const awaitedPromises = await Promise.all(promises)
-
-		let refreshToken = awaitedPromises[0] as string
+		const [refreshToken, saved] = await Promise.all([getNewSessionToken(), Promise.all(downloads)])
+		if (saved.includes(false)) return
 
 		const args = [
 			mainFile,

@@ -60,10 +60,6 @@ function parseLogMessage(msg: string): LogSegment[] {
 					color,
 					close: false
 				})
-
-				console.log("i: ", i)
-				console.log("textStart: ", textStart)
-				console.log("slice: ", msg.slice(textStart, i))
 			}
 
 			color = "FFFFFF"
@@ -114,8 +110,8 @@ class ChannelManager {
 
 			buffer.push(...parsed)
 
-			while (buffer.length > MAX_LOGS) {
-				buffer.shift()
+			if (buffer.length > MAX_LOGS) {
+				buffer.splice(0, buffer.length - MAX_LOGS)
 			}
 
 			entry.version++

@@ -3,9 +3,6 @@ import { getProfile, getSession, getUser, supabase } from "$lib/supabase"
 import { error } from "@sveltejs/kit"
 import { invoke } from "@tauri-apps/api/core"
 import { assetsURLStore, devAssetsURLStore, devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
-import { listen } from "@tauri-apps/api/event"
-import { channelManager } from "$lib/communication.svelte"
-import { invalidate } from "$app/navigation"
 export const prerender = true
 export const ssr = false
 
@@ -15,13 +12,14 @@ export const load = async ({ depends, url: { searchParams } }) => {
 
 	depends("root:layout")
 
+	const user = getUser()
 	const promises = await Promise.all([
-		getSession(),
+		getSession(user),
 		storeLoad("settings.json", {
 			autoSave: true,
 			defaults: { dark: true, theme: "wasp", sidebar: true }
 		}),
-		getProfile(getUser()),
+		getProfile(user),
 		invoke("get_executable_path", { exe: "simba" }) as Promise<string>,
     invoke("get_executable_path", { exe: "devsimba" }) as Promise<string>,
 		invoke("get_dev_mode") as Promise<boolean>,
@@ -41,13 +39,7 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	devModeStore.set(promises[5])
   devUpdatesStore.set(promises[6])
   assetsURLStore.set(promises[7])
-  devAssetsURLStore.set(promises[7])
-
-	const unlisten = await listen<string>("process-finished", async (event) => {
-		const channel = Number(event.payload)
-		console.log(`Process finished: ${channel}`)
-		await Promise.all([channelManager.stopChannel(channel), invalidate("layout:running")])
-	})
+  devAssetsURLStore.set(promises[8])
 
 	return {
 		supabase,
@@ -57,7 +49,6 @@ export const load = async ({ depends, url: { searchParams } }) => {
 		settings,
 		dark: (settingValues[0] as boolean) ?? true,
 		theme: (settingValues[1] as string) ?? "wasp",
-		sidebar: (settingValues[2] as boolean) ?? true,
-		unlisten
+		sidebar: (settingValues[2] as boolean) ?? true
 	}
 }

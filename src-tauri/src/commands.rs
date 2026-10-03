@@ -12,7 +12,6 @@ use std::{
 
 use serde_json::json;
 use tauri::{ipc::Channel, Emitter, Manager, State};
-use tauri_plugin_http::reqwest::Client;
 use tauri_plugin_store::StoreExt;
 
 use crate::{
@@ -20,7 +19,7 @@ use crate::{
     server::handle_client,
     simba::{
         ensure_simba_directories, read_plugins_version, run_simba, run_simba_script,
-        sync_plugins_repo,
+        sync_plugins_repo, HTTP_CLIENT,
     },
     LauncherVariables,
 };
@@ -428,14 +427,13 @@ pub fn start_server(app: tauri::AppHandle) {
 pub async fn sign_up(id: String) -> Result<String, String> {
     println!("Sign up for user {}", id);
 
-    let client = Client::new();
     let url = "https://waspscripts.dev/auth/launcher/";
 
     let body = json!({
         "user_id": id
     });
 
-    let res = client
+    let res = HTTP_CLIENT
         .post(url)
         .header("Content-Type", "application/json")
         .body(body.to_string())

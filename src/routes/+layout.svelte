@@ -2,15 +2,23 @@
 	import { onMount } from "svelte"
 	import "../app.css"
 	import { invalidate } from "$app/navigation"
+	import { listen } from "@tauri-apps/api/event"
+	import { channelManager } from "$lib/communication.svelte"
 
 	let { data, children } = $props()
-	const { supabase, session, dark, theme, sidebar, unlisten } = $derived(data)
+	const { supabase, session, dark, theme, sidebar } = $derived(data)
 
 	let callTimestamps: number[] = []
 	onMount(() => {
 		document.documentElement.classList.toggle("dark", dark)
 		document.body.setAttribute("data-theme", theme)
 		document.documentElement.classList.toggle("sidebar", sidebar)
+
+		const unlisten = listen<string>("process-finished", async (event) => {
+			const channel = Number(event.payload)
+			console.log(`Process finished: ${channel}`)
+			await Promise.all([channelManager.stopChannel(channel), invalidate("layout:running")])
+		})
 
 		const { data } = supabase.auth.onAuthStateChange((_, newSession) => {
 			if (newSession?.expires_at !== session?.expires_at) {
@@ -29,7 +37,7 @@
 
 		return () => {
 			data.subscription.unsubscribe()
-			unlisten()
+			unlisten.then((fn) => fn())
 		}
 	})
 </script>

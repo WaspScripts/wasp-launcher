@@ -3,6 +3,7 @@ use std::{
     io::{self, BufRead, BufReader, Cursor},
     path::{Path, PathBuf},
     process::Stdio,
+    sync::LazyLock,
     thread,
 };
 
@@ -12,10 +13,13 @@ use tauri::{
     ipc::Channel,
     AppHandle, Error,
 };
-use tauri_plugin_http::reqwest::{self, Client};
+use tauri_plugin_http::reqwest::Client;
 use zip::ZipArchive;
 
 const SUPABASE_URL: &str = "https://db.waspscripts.dev/";
+// Shared so every request reuses the same connection pool and TLS setup.
+pub static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
+
 const SUPABASE_ANON_KEY: &str = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc1MTA0MTIwMCwiZXhwIjo0OTA2NzE0ODAwLCJyb2xlIjoiYW5vbiJ9.C_KW5x45BpIyOQrnZc7CKYKjHe0yxB4l-fTSC4z_kYY";
 
 #[derive(Deserialize, Debug)]
@@ -27,7 +31,7 @@ async fn download_and_unzip_file(
     url: &str,
     dest: &PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let response = Client::new()
+    let response = HTTP_CLIENT
         .get(url)
         .send()
         .await?
@@ -123,7 +127,7 @@ async fn download_and_unzip_dir(
         let url = format!("{}storage/v1/object/{}/{}.zip", SUPABASE_URL, db_path, src);
         println!("Downloading {} from {}", src, url);
 
-        let response = Client::new()
+        let response = HTTP_CLIENT
             .get(&url)
             .bearer_auth(SUPABASE_ANON_KEY)
             .send()
@@ -217,8 +221,7 @@ async fn fetch_plugins_version() -> Result<String, Box<dyn std::error::Error>> {
     let url =
         SUPABASE_URL.to_string() + "rest/v1/plugins?select=version&order=created_at.desc&limit=1";
 
-    let client = Client::new();
-    let response = client
+    let response = HTTP_CLIENT
         .get(url)
         .headers(headers)
         .send()
@@ -331,7 +334,9 @@ const SIMBA_ARCHIVE_URL: &str =
     "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
 
 async fn fetch_simba_archive() -> String {
-    let res = reqwest::get(SIMBA_ARCHIVE_URL)
+    let res = HTTP_CLIENT
+        .get(SIMBA_ARCHIVE_URL)
+        .send()
         .await
         .expect("Failed to fetch README.md");
     res.text().await.expect("Failed to read response text")
@@ -429,7 +434,7 @@ async fn download_cache_reader(includes: PathBuf, version: String) -> Result<Pat
         CACHE_READER_PATH, git_ref
     );
 
-    let client = Client::new();
+    let client = &*HTTP_CLIENT;
     let body = client
         .get(&url)
         .header("User-Agent", "wasp-launcher")
@@ -460,12 +465,12 @@ async fn download_cache_reader(includes: PathBuf, version: String) -> Result<Pat
     Ok(zip_path)
 }
 
-async fn install_wasplib(path: &Path, version: &str) {
+async fn install_wasplib(path: PathBuf, version: String) {
     let includes = path.join("Includes");
     let cache_reader =
-        tauri::async_runtime::spawn(download_cache_reader(includes.clone(), version.to_string()));
+        tauri::async_runtime::spawn(download_cache_reader(includes.clone(), version.clone()));
 
-    if let Err(e) = download_and_unzip_dir(includes.clone(), "WaspLib", "wasplib", version).await {
+    if let Err(e) = download_and_unzip_dir(includes.clone(), "WaspLib", "wasplib", &version).await {
         eprintln!("Failed to install WaspLib {}: {}", version, e);
         return;
     }
@@ -491,10 +496,14 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         panic!("Expected 6 arguments, but got {}", args.len());
     }
 
+    // WaspLib doesn't depend on the Simba executable, so both are installed at the same time.
+    let wasplib = (args[2] != "none")
+        .then(|| tauri::async_runtime::spawn(install_wasplib(path.clone(), args[2].clone())));
+
     let exe_path = ensure_simba_executable(&path, &args[1]).await;
 
-    if args[2] != "none" {
-        install_wasplib(&path, &args[2]).await;
+    if let Some(wasplib) = wasplib {
+        let _ = wasplib.await;
     }
 
     let script_file = path.join("Scripts").join(&args[0]);
@@ -530,10 +539,14 @@ pub async fn run_simba_script(
         return Err(format!("Expected 6 arguments, but got {}", args.len()));
     }
 
+    // WaspLib doesn't depend on the Simba executable, so both are installed at the same time.
+    let wasplib = (args[2] != "none")
+        .then(|| tauri::async_runtime::spawn(install_wasplib(path.clone(), args[2].clone())));
+
     let exe_path = ensure_simba_executable(&path, &args[1]).await;
 
-    if args[2] != "none" {
-        install_wasplib(&path, &args[2]).await;
+    if let Some(wasplib) = wasplib {
+        let _ = wasplib.await;
     }
 
     let script_file: String = path
