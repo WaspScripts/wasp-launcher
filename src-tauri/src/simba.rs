@@ -311,6 +311,141 @@ fn clear_remote_input_execstack(app: &AppHandle, plugins_path: &Path) {
 #[cfg(not(target_os = "linux"))]
 fn clear_remote_input_execstack(_app: &AppHandle, _plugins_path: &Path) {}
 
+#[cfg(target_os = "linux")]
+pub fn check_ptrace_scope(app: &AppHandle) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    const PERSIST: &str =
+        "echo 'kernel.yama.ptrace_scope = 0' | sudo tee /etc/sysctl.d/10-ptrace.conf";
+
+    // Missing when Yama isn't enabled, in which case ptrace isn't restricted.
+    let Ok(scope) = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope") else {
+        return Ok(());
+    };
+
+    // Scope 3 is locked until a reboot, so it can only be persisted.
+    let (command, steps) = match scope.trim() {
+        "0" => return Ok(()),
+        "3" => (
+            PERSIST.to_string(),
+            "Run this in a terminal and then restart your computer:",
+        ),
+        _ => (
+            format!("{} && sudo sysctl -w kernel.yama.ptrace_scope=0", PERSIST),
+            "Run this in a terminal to allow it:",
+        ),
+    };
+
+    let message = format!(
+        "RemoteInput needs ptrace to attach to the client but it's restricted on this system \
+         (kernel.yama.ptrace_scope = {}).\n\n{}\n\n{}\n\n\
+         Note: this is a system-wide setting, not just for Simba. \n\
+         It lets any program running as your user inspect and modify your other programs \
+         (e.g. read your browser's memory).\n\
+         Programs of other users and root stay protected. \n\
+         It's undone by deleting /etc/sysctl.d/10-ptrace.conf and rebooting.",
+        scope.trim(),
+        steps,
+        command
+    );
+
+    eprintln!("{}", message);
+    let handle = app.clone();
+    app.dialog()
+        .message(message)
+        .title("ptrace restricted")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Copy command".into(),
+            "Close".into(),
+        ))
+        .show(move |copy| {
+            if copy {
+                let _ = handle.clipboard().write_text(command);
+            }
+        });
+
+    Err(format!(
+        "ptrace is restricted (kernel.yama.ptrace_scope = {}), Simba wasn't launched.",
+        scope.trim()
+    ))
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn check_ptrace_scope(_app: &AppHandle) -> Result<(), String> {
+    Ok(())
+}
+
+// Simba is a GTK2/X11 app, so on Wayland it runs through XWayland and ignores GDK_SCALE.
+// The only thing it honours is Xft.dpi, which is passed to it through XENVIRONMENT.
+#[cfg(target_os = "linux")]
+fn apply_dpi_scale(cmd: &mut std::process::Command, setting: f64) {
+    let Some(scale) = resolve_dpi_scale(setting) else {
+        return;
+    };
+
+    let dir = std::env::var_os("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    let file = dir.join(format!("simba-xresources-{}", scale));
+    let dpi = (96.0 * scale).round() as u32;
+
+    if let Err(e) = write(&file, format!("Xft.dpi: {}\n", dpi)) {
+        eprintln!("Failed to write {:?}: {}", file, e);
+        return;
+    }
+
+    println!("Launching Simba at {}x scale ({} dpi)", scale, dpi);
+    cmd.env("XENVIRONMENT", file);
+}
+
+#[cfg(not(target_os = "linux"))]
+fn apply_dpi_scale(_cmd: &mut std::process::Command, _setting: f64) {}
+
+// SIMBA_SCALE env var > launcher setting > auto detection. A setting of 0 means auto.
+#[cfg(target_os = "linux")]
+fn resolve_dpi_scale(setting: f64) -> Option<f64> {
+    let env_scale = std::env::var("SIMBA_SCALE")
+        .ok()
+        .and_then(|s| s.parse::<f64>().ok())
+        .filter(|s| *s > 0.0);
+
+    env_scale
+        .or((setting > 0.0).then_some(setting))
+        .or_else(hyprland_xwayland_scale)
+}
+
+// With xwayland:force_zero_scaling Hyprland draws X11 windows 1:1, so the app has to scale
+// itself to the monitor's scale. Without it Hyprland upscales them and we must not scale twice.
+#[cfg(target_os = "linux")]
+fn hyprland_xwayland_scale() -> Option<f64> {
+    std::env::var_os("HYPRLAND_INSTANCE_SIGNATURE")?;
+
+    let hyprctl = |args: &[&str]| -> Option<serde_json::Value> {
+        let output = std::process::Command::new("hyprctl")
+            .args(args)
+            .arg("-j")
+            .output()
+            .ok()?;
+        serde_json::from_slice(&output.stdout).ok()
+    };
+
+    let option = hyprctl(&["getoption", "xwayland:force_zero_scaling"])?;
+    let zero_scaling = option["bool"]
+        .as_bool()
+        .or_else(|| option["int"].as_i64().map(|i| i != 0))?;
+    if !zero_scaling {
+        return None;
+    }
+
+    hyprctl(&["monitors"])?
+        .as_array()?
+        .iter()
+        .find(|m| m["focused"].as_bool() == Some(true))?["scale"]
+        .as_f64()
+}
+
 pub fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
     create_dir_all(path)?;
 
@@ -489,10 +624,10 @@ async fn install_wasplib(path: PathBuf, version: String) {
     }
 }
 
-pub async fn run_simba(path: PathBuf, args: Vec<String>) {
+pub async fn run_simba(path: PathBuf, args: Vec<String>, dpi_scale: f64) {
     println!("Attempt to run Simba from: {:?}", path);
 
-    if args.len() != 7 {
+    if args.len() != 6 {
         panic!("Expected 6 arguments, but got {}", args.len());
     }
 
@@ -513,8 +648,7 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         .arg(script_file)
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
-        .env("WASP_REFRESH_TOKEN", &args[5])
-        .env("assets", &args[6]);
+        .env("WASP_REFRESH_TOKEN", &args[5]);
 
     if args[1] != "latest" {
         cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
@@ -524,6 +658,8 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>) {
         cmd.env("SCRIPT_WASPLIB_VERSION", &args[2]);
     }
 
+    apply_dpi_scale(&mut cmd, dpi_scale);
+
     let _ = cmd.spawn().map_err(|err| err.to_string());
 }
 
@@ -531,11 +667,12 @@ pub async fn run_simba_script(
     path: PathBuf,
     target: isize,
     args: Vec<String>,
+    dpi_scale: f64,
     channel: Channel<String>,
 ) -> Result<std::process::Child, String> {
     println!("Attempt to run Simba from: {:?}", path);
 
-    if args.len() != 7 {
+    if args.len() != 6 {
         return Err(format!("Expected 6 arguments, but got {}", args.len()));
     }
 
@@ -564,8 +701,7 @@ pub async fn run_simba_script(
         .arg(script_file)
         .env("SCRIPT_ID", &args[3])
         .env("SCRIPT_REVISION", &args[4])
-        .env("WASP_REFRESH_TOKEN", &args[5])
-        .env("assets", &args[6]);
+        .env("WASP_REFRESH_TOKEN", &args[5]);
 
     if args[1] != "latest" {
         cmd.env("SCRIPT_SIMBA_VERSION", &args[1]);
@@ -574,6 +710,8 @@ pub async fn run_simba_script(
     if (args[2] != "latest") && (args[2] != "none") {
         cmd.env("SCRIPT_WASPLIB_VERSION", &args[2]);
     }
+
+    apply_dpi_scale(&mut cmd, dpi_scale);
 
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 

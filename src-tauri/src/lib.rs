@@ -27,8 +27,7 @@ struct LauncherVariables {
     devsimba: PathBuf,
     client: Option<WindowMatch>,
     dev_updates: bool,
-    assets_url: String,
-    dev_assets_url: String,
+    simba_scale: f64,
     scripts: Mutex<HashMap<u32, Arc<Mutex<Option<Child>>>>>,
 }
 
@@ -62,6 +61,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -134,19 +134,11 @@ pub fn run() {
                 }
             };
 
-            let assets_url: String = match settings.get("assets_url") {
-                Some(value) => value.as_str().unwrap_or("").to_string(),
+            let simba_scale: f64 = match settings.get("simba_scale") {
+                Some(value) => value.as_f64().unwrap_or(0.0),
                 None => {
-                    settings.set("assets_url", "");
-                    String::new()
-                }
-            };
-
-            let dev_assets_url: String = match settings.get("dev_assets_url") {
-                Some(value) => value.as_str().unwrap_or("").to_string(),
-                None => {
-                    settings.set("dev_assets_url", "");
-                    String::new()
+                    settings.set("simba_scale", 0.0);
+                    0.0
                 }
             };
 
@@ -156,8 +148,7 @@ pub fn run() {
                 devsimba: get_path("devsimba", simba_path),
                 client: None,
                 dev_updates: dev_updates,
-                assets_url: assets_url,
-                dev_assets_url: dev_assets_url,
+                simba_scale: simba_scale,
                 scripts: Mutex::new(HashMap::new()),
             }));
 
@@ -171,10 +162,9 @@ pub fn run() {
             commands::set_dev_updates,
             commands::get_executable_path,
             commands::set_executable_path,
-            commands::get_assets_url,
-            commands::set_assets_url,
-            commands::get_dev_assets_url,
-            commands::set_dev_assets_url,
+            commands::get_platform,
+            commands::get_simba_scale,
+            commands::set_simba_scale,
             commands::run_executable,
             commands::run_script,
             commands::kill_script,

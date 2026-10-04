@@ -18,8 +18,8 @@ use crate::{
     client::{bring_window_to_top, list_processes, WindowMatch},
     server::handle_client,
     simba::{
-        ensure_simba_directories, read_plugins_version, run_simba, run_simba_script,
-        sync_plugins_repo, HTTP_CLIENT,
+        check_ptrace_scope, ensure_simba_directories, read_plugins_version, run_simba,
+        run_simba_script, sync_plugins_repo, HTTP_CLIENT,
     },
     LauncherVariables,
 };
@@ -98,45 +98,29 @@ pub fn set_executable_path(
 }
 
 #[tauri::command]
-pub fn get_assets_url(launcher: State<'_, Mutex<LauncherVariables>>) -> String {
-    let launcher = launcher.lock().unwrap();
-    launcher.assets_url.clone()
+pub fn get_platform() -> String {
+    std::env::consts::OS.to_string()
 }
 
 #[tauri::command]
-pub fn set_assets_url(
+pub fn get_simba_scale(launcher: State<'_, Mutex<LauncherVariables>>) -> f64 {
+    let launcher = launcher.lock().unwrap();
+    launcher.simba_scale
+}
+
+#[tauri::command]
+pub fn set_simba_scale(
     app: tauri::AppHandle,
     launcher: State<'_, Mutex<LauncherVariables>>,
-    url: String,
+    scale: f64,
 ) {
     let mut launcher = launcher.lock().unwrap();
-    launcher.assets_url = url.clone();
+    launcher.simba_scale = scale;
 
     let store = app
         .store("settings.json")
         .expect("Failed to retrieve settings.json store!");
-    store.set("assets_url", url.clone());
-}
-
-#[tauri::command]
-pub fn get_dev_assets_url(launcher: State<'_, Mutex<LauncherVariables>>) -> String {
-    let launcher = launcher.lock().unwrap();
-    launcher.dev_assets_url.clone()
-}
-
-#[tauri::command]
-pub fn set_dev_assets_url(
-    app: tauri::AppHandle,
-    launcher: State<'_, Mutex<LauncherVariables>>,
-    url: String,
-) {
-    let mut launcher = launcher.lock().unwrap();
-    launcher.dev_assets_url = url.clone();
-
-    let store = app
-        .store("settings.json")
-        .expect("Failed to retrieve settings.json store!");
-    store.set("dev_assets_url", url.clone());
+    store.set("simba_scale", scale);
 }
 
 #[tauri::command]
@@ -257,17 +241,20 @@ pub async fn run_executable(
     exe: String,
     args: Vec<String>,
 ) -> Result<String, String> {
-    let path = {
+    check_ptrace_scope(&app)?;
+
+    let (path, scale) = {
         let paths = launcher_vars.lock().unwrap();
-        match exe.as_str() {
+        let path = match exe.as_str() {
             "simba" => paths.simba.clone(),
             "devsimba" => paths.devsimba.clone(),
             _ => paths.simba.clone(),
-        }
+        };
+        (path, paths.simba_scale)
     };
 
     if exe == "simba" {
-        run_simba(path, args).await;
+        run_simba(path, args, scale).await;
         Ok("Process started successfully".to_string())
     } else if exe == "devsimba" {
         let diff_dirs = {
@@ -283,7 +270,7 @@ pub async fn run_executable(
             });
         };
 
-        run_simba(path, args).await;
+        run_simba(path, args, scale).await;
         Ok("Process started successfully".to_string())
     } else {
         Err("Unrecognized executable. Only \"simba\" or \"devsimba\" is allowed.".to_string())
@@ -297,16 +284,18 @@ pub async fn run_script(
     args: Vec<String>,
     channel: Channel<String>,
 ) -> Result<String, String> {
-    let (simba_path, hwnd) = {
+    check_ptrace_scope(&app)?;
+
+    let (simba_path, hwnd, scale) = {
         let guard = launcher.lock().unwrap();
         match &guard.client {
-            Some(client) => (guard.simba.clone(), client.hwnd),
+            Some(client) => (guard.simba.clone(), client.hwnd, guard.simba_scale),
             None => return Err("Client is null".to_string()),
         }
     };
 
     let id = channel.id();
-    let process = run_simba_script(simba_path, hwnd, args, channel).await?;
+    let process = run_simba_script(simba_path, hwnd, args, scale, channel).await?;
 
     let shared_process = Arc::new(Mutex::new(Some(process)));
 

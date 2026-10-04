@@ -3,7 +3,7 @@
 	import { open } from "@tauri-apps/plugin-dialog"
 	import { Switch } from "@skeletonlabs/skeleton-svelte"
 	import { mdRenderer } from "$lib/markdown"
-	import { devAssetsURLStore, devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
+	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 
 	async function setDevMode(state: boolean) {
 		await invoke("set_dev_mode", { state })
@@ -60,12 +60,6 @@
 		reinstallingPlugins = true
 		await invoke("reinstall_plugins", { exe: "devsimba" })
 		reinstallingPlugins = false
-	}
-
-	async function updateAssetsURL(url: string) {
-		if (!url) return
-		await invoke("set_dev_assets_url", { url })
-		devAssetsURLStore.set(url)
 	}
 
 	const info = `### This section is only for people that are interested in development.
@@ -179,17 +173,5 @@ Also while on this tab, the buttons below will affect your development path.`
 		>
 			Reinstall plugins
 		</button>
-	</div>
-
-	<div class="flex">
-	    <label class="mx-auto label-text">
-    		Assets URL:
-    		<input
-    			class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
-    			bind:value={$devAssetsURLStore}
-    			onchange={async () => await updateAssetsURL($devAssetsURLStore)}
-
-    		/>
-    	</label>
 	</div>
 </main>

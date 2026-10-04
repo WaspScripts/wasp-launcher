@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from "$app/state"
-	import { assetsURLStore, devAssetsURLStore, devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
+	import { devModeStore, devPathStore, devUpdatesStore } from "$lib/store"
 	import { supabase } from "$lib/supabase"
 	import { Tooltip, Portal } from "@skeletonlabs/skeleton-svelte"
 	import type { Session } from "@supabase/supabase-js"
@@ -66,8 +66,7 @@
 			return
 		}
 
-		const assets = exe === "simba" ? $assetsURLStore : $devAssetsURLStore
-		const args = ["", data.simba, wasplib, "", "", refresh_token, assets]
+		const args = ["", data.simba, wasplib, "", "", refresh_token]
 
 		await invoke("run_executable", { exe, args })
 	}

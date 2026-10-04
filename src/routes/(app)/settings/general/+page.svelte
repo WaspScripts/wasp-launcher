@@ -2,7 +2,7 @@
 	import { mdRenderer } from "$lib/markdown"
 	import { invoke } from "@tauri-apps/api/core"
 
-	import { assetsURLStore } from "$lib/store"
+	let { data } = $props()
 
 	let deletingCache = $state(false)
 	async function deleteCache() {
@@ -34,11 +34,10 @@
 		reinstallingPlugins = false
 	}
 
-	async function updateAssetsURL(url: string) {
-		if (!url) return
-		await invoke("set_assets_url", { url })
-		assetsURLStore.set(url)
-	}
+	// 0 means auto: the launcher detects the scale itself when it can.
+	const scales = [0, 1, 1.25, 1.5, 2, 2.5, 3]
+	// svelte-ignore state_referenced_locally
+	let simbaScale = $state(data.simbaScale)
 
 	const info = `Here you can reset several things related to your Simba install that could have gone bad.
 
@@ -105,15 +104,20 @@ If you keep having issues, it's recommened you close all of your runescape clien
 		</button>
 	</div>
 
-	<div class="flex">
-    	<label class="mx-auto label-text">
-    		Assets URL:
-    		<input
-    			class="input w-96 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
-    			bind:value={$assetsURLStore}
-    			onchange={async () => await updateAssetsURL($assetsURLStore)}
-
-    		/>
-    	</label>
-	</div>
+	{#if data.platform === "linux"}
+		<div class="flex">
+			<label class="mx-auto label-text">
+				Simba scale:
+				<select
+					class="select w-32 preset-filled-surface-200-800 hover:outline-1 hover:outline-primary-500"
+					bind:value={simbaScale}
+					onchange={async () => await invoke("set_simba_scale", { scale: simbaScale })}
+				>
+					{#each scales as scale}
+						<option value={scale}>{scale === 0 ? "Auto" : scale + "x"}</option>
+					{/each}
+				</select>
+			</label>
+		</div>
+	{/if}
 </main>

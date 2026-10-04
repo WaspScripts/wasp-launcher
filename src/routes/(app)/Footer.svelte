@@ -9,7 +9,6 @@
 	import { RefreshCw, Share2, SquaresSubtract } from "@lucide/svelte"
 	import { channelManager } from "$lib/communication.svelte"
 	import { goto } from "$app/navigation"
-	import { assetsURLStore } from "$lib/store"
 	import { MediaQuery } from "svelte/reactivity"
 	import type { Component } from "svelte"
 
@@ -100,13 +99,18 @@
 			version.wasplib,
 			script.id,
 			script.protected.revision.toString(),
-			refreshToken,
-			$assetsURLStore
+			refreshToken
 		]
 
 		const channel = await channelManager.createChannel(script.title)
-		const result = await invoke("run_script", { args, channel })
-		console.log("run_script: ", result)
+		try {
+			const result = await invoke("run_script", { args, channel })
+			console.log("run_script: ", result)
+		} catch (err) {
+			console.error(err)
+			channelManager.removeChannel(channel.id)
+			return
+		}
 		return channel.id
 	}
 
@@ -248,7 +252,7 @@
 							class="hover:preset-filled-primary-800 btn preset-filled-primary-500"
 							onclick={async () => {
 								const id = await execute()
-								await goto("/running/" + id)
+								if (id !== undefined) await goto("/running/" + id)
 							}}
 							disabled={client < 0}
 						>

@@ -3,13 +3,14 @@ use std::{error::Error, fs};
 use serde::{Deserialize, Serialize};
 use x11rb::{
     connection::Connection,
-    protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt, EventMask, MapState, Window},
+    protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt, EventMask, Window},
     rust_connection::RustConnection,
     CURRENT_TIME,
 };
 
 // Every AWT toplevel on X11 gets a tiny focus proxy child window with this class.
 const FOCUS_PROXY_CLASS: &str = "FocusProxy";
+const CANVAS_PEER_NAME: &str = "sun-awt-X11-XCanvasPeer";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WindowMatch {
@@ -50,7 +51,7 @@ fn walk_tree(
             continue;
         }
 
-        if let Some(canvas) = find_canvas(conn, child, 0).map(|(w, _)| w) {
+        if let Some(canvas) = find_canvas(conn, child) {
             matches.push(WindowMatch {
                 pid,
                 hwnd: canvas as isize,
@@ -70,39 +71,27 @@ fn is_java_window(conn: &RustConnection, window: Window) -> bool {
         .any(|&child| get_wm_class(conn, child).as_deref() == Some(FOCUS_PROXY_CLASS))
 }
 
-// Java gives every heavyweight component its own X window but they all share the
-// same WM_CLASS, so the game canvas is found by structure instead. It's the deepest
-// visible window that is at least toplevel -> content window -> canvas deep.
-fn find_canvas(conn: &RustConnection, window: Window, depth: u32) -> Option<(Window, u32)> {
-    let mut best = None;
-
-    if depth >= 2 && is_large_and_visible(conn, window) {
-        best = Some((window, depth));
+// Every window of a Java app shares the same WM_CLASS, but AWT names each one after its
+// peer class (WM_NAME). The game canvas is the XCanvasPeer, which is the window Simba
+// targets and the one remote input needs.
+fn find_canvas(conn: &RustConnection, window: Window) -> Option<Window> {
+    if get_wm_name(conn, window).as_deref() == Some(CANVAS_PEER_NAME) {
+        return Some(window);
     }
 
     let children = conn.query_tree(window).ok()?.reply().ok()?.children;
-    for child in children {
-        if let Some(found) = find_canvas(conn, child, depth + 1) {
-            if best.map_or(true, |(_, d)| found.1 > d) {
-                best = Some(found);
-            }
-        }
-    }
-
-    best
+    children
+        .into_iter()
+        .find_map(|child| find_canvas(conn, child))
 }
 
-fn is_large_and_visible(conn: &RustConnection, window: Window) -> bool {
-    let viewable = match conn.get_window_attributes(window).map(|c| c.reply()) {
-        Ok(Ok(attributes)) => attributes.map_state == MapState::VIEWABLE,
-        _ => false,
-    };
-
-    viewable
-        && match conn.get_geometry(window).map(|c| c.reply()) {
-            Ok(Ok(geometry)) => geometry.width > 100 && geometry.height > 100,
-            _ => false,
-        }
+fn get_wm_name(conn: &RustConnection, window: Window) -> Option<String> {
+    let reply = conn
+        .get_property(false, window, AtomEnum::WM_NAME, AtomEnum::ANY, 0, 256)
+        .ok()?
+        .reply()
+        .ok()?;
+    Some(String::from_utf8_lossy(&reply.value).into_owned())
 }
 
 fn get_wm_class(conn: &RustConnection, window: Window) -> Option<String> {
