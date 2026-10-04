@@ -468,33 +468,31 @@ pub fn ensure_simba_directories(path: &PathBuf) -> std::io::Result<()> {
 const SIMBA_ARCHIVE_URL: &str =
     "https://raw.githubusercontent.com/Villavu/Simba-Build-Archive/refs/heads/main/README.md";
 
-async fn fetch_simba_archive() -> String {
-    let res = HTTP_CLIENT
-        .get(SIMBA_ARCHIVE_URL)
-        .send()
+async fn fetch_simba_archive() -> Result<String, String> {
+    let fetch = async {
+        HTTP_CLIENT
+            .get(SIMBA_ARCHIVE_URL)
+            .send()
+            .await?
+            .text()
+            .await
+    };
+    fetch
         .await
-        .expect("Failed to fetch README.md");
-    res.text().await.expect("Failed to read response text")
+        .map_err(|e| format!("Failed to fetch the Simba build archive: {}", e))
 }
 
-async fn ensure_simba_executable(path: &Path, version: &str) -> PathBuf {
+async fn ensure_simba_executable(path: &Path, version: &str) -> Result<PathBuf, String> {
     let commit = if version == "latest" {
         println!("Finding latest Simba available");
 
-        let body = fetch_simba_archive().await;
-        let line = body
-            .lines()
+        let body = fetch_simba_archive().await?;
+        body.lines()
             .find(|l| l.contains("| simba2000 |"))
-            .expect("Branch not found in README.md");
-
-        let parts: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
-        let commit_col = parts.get(2).expect("No commit column found");
-
-        commit_col
-            .split(']')
-            .next()
+            .and_then(|line| line.split('|').nth(2))
+            .and_then(|col| col.trim().split(']').next())
             .and_then(|s| s.strip_prefix('['))
-            .expect("Failed to parse commit")
+            .ok_or("Failed to find the latest Simba in the build archive")?
             .to_string()
     } else {
         version.to_string()
@@ -505,42 +503,35 @@ async fn ensure_simba_executable(path: &Path, version: &str) -> PathBuf {
 
     if !exe_path.exists() {
         println!("Downloading {}", exe_name);
-        let url = simba_download_url(&commit).await;
+        let url = simba_download_url(&commit).await?;
         download_and_unzip_file(&url, &exe_path)
             .await
-            .expect(&format!("Failed to download or unzip {}", exe_name));
+            .map_err(|e| format!("Failed to download {}: {}", exe_name, e))?;
     }
 
-    exe_path
+    Ok(exe_path)
 }
 
 #[cfg(target_os = "windows")]
-async fn simba_download_url(commit: &str) -> String {
-    format!(
+async fn simba_download_url(commit: &str) -> Result<String, String> {
+    Ok(format!(
         "{}storage/v1/object/simba/{}/win64.zip",
         SUPABASE_URL, commit
-    )
+    ))
 }
 
 #[cfg(target_os = "linux")]
-async fn simba_download_url(commit: &str) -> String {
-    // Linux builds aren't mirrored on supabase, so get them from the build archive itself.
+async fn simba_download_url(commit: &str) -> Result<String, String> {
     let file = if cfg!(target_arch = "aarch64") {
-        "Simba_linux_aarch64.zip"
+        "linux-arm64.zip"
     } else {
-        "Simba_linux_x86_64.zip"
+        "linux64.zip"
     };
 
-    let body = fetch_simba_archive().await;
-    let line = body
-        .lines()
-        .find(|l| l.contains(&format!("[{}]", commit)))
-        .expect(&format!("Simba {} not found in README.md", commit));
-
-    line.split(|c| c == '(' || c == ')')
-        .find(|s| s.starts_with("https://") && s.ends_with(file))
-        .expect(&format!("No Linux build found for Simba {}", commit))
-        .to_string()
+    Ok(format!(
+        "{}storage/v1/object/simba/{}/{}",
+        SUPABASE_URL, commit, file
+    ))
 }
 
 const CACHE_READER_PATH: &str = "utils/cache-reader";
@@ -624,18 +615,18 @@ async fn install_wasplib(path: PathBuf, version: String) {
     }
 }
 
-pub async fn run_simba(path: PathBuf, args: Vec<String>, dpi_scale: f64) {
+pub async fn run_simba(path: PathBuf, args: Vec<String>, dpi_scale: f64) -> Result<(), String> {
     println!("Attempt to run Simba from: {:?}", path);
 
     if args.len() != 6 {
-        panic!("Expected 6 arguments, but got {}", args.len());
+        return Err(format!("Expected 6 arguments, but got {}", args.len()));
     }
 
     // WaspLib doesn't depend on the Simba executable, so both are installed at the same time.
     let wasplib = (args[2] != "none")
         .then(|| tauri::async_runtime::spawn(install_wasplib(path.clone(), args[2].clone())));
 
-    let exe_path = ensure_simba_executable(&path, &args[1]).await;
+    let exe_path = ensure_simba_executable(&path, &args[1]).await?;
 
     if let Some(wasplib) = wasplib {
         let _ = wasplib.await;
@@ -660,7 +651,8 @@ pub async fn run_simba(path: PathBuf, args: Vec<String>, dpi_scale: f64) {
 
     apply_dpi_scale(&mut cmd, dpi_scale);
 
-    let _ = cmd.spawn().map_err(|err| err.to_string());
+    cmd.spawn().map_err(|err| err.to_string())?;
+    Ok(())
 }
 
 pub async fn run_simba_script(
@@ -680,7 +672,7 @@ pub async fn run_simba_script(
     let wasplib = (args[2] != "none")
         .then(|| tauri::async_runtime::spawn(install_wasplib(path.clone(), args[2].clone())));
 
-    let exe_path = ensure_simba_executable(&path, &args[1]).await;
+    let exe_path = ensure_simba_executable(&path, &args[1]).await?;
 
     if let Some(wasplib) = wasplib {
         let _ = wasplib.await;

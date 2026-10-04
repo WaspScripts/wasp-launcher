@@ -254,7 +254,7 @@ pub async fn run_executable(
     };
 
     if exe == "simba" {
-        run_simba(path, args, scale).await;
+        run_simba(path, args, scale).await?;
         Ok("Process started successfully".to_string())
     } else if exe == "devsimba" {
         let diff_dirs = {
@@ -270,7 +270,7 @@ pub async fn run_executable(
             });
         };
 
-        run_simba(path, args, scale).await;
+        run_simba(path, args, scale).await?;
         Ok("Process started successfully".to_string())
     } else {
         Err("Unrecognized executable. Only \"simba\" or \"devsimba\" is allowed.".to_string())
