@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { page } from "$app/state"
 	import Navigation from "./Navigation.svelte"
 	import Footer from "./Footer.svelte"
 	import Sidebar from "./Sidebar.svelte"
 
-	let { data, children } = $props()
+	let { children } = $props()
 </script>
 
 <Navigation />
@@ -11,4 +12,4 @@
 	{@render children()}
 	<Sidebar />
 </main>
-<Footer script={data.script} />
+<Footer script={page.data.script} />

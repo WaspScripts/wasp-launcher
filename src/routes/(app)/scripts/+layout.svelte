@@ -3,8 +3,12 @@
 	import { SearchIcon } from "@lucide/svelte"
 
 	let { data, children } = $props()
-	const scripts = $derived(data.scripts)
 	let search = $state("")
+	const scripts = $derived.by(() => {
+		const query = search.trim().toLowerCase()
+		if (!query) return data.scripts
+		return data.scripts.filter((script) => script.title.toLowerCase().includes(query))
+	})
 
 	function getStyle(access: boolean, type: string, published: boolean) {
 		if (!published) {
@@ -16,8 +20,6 @@
 			return "text-warning-500"
 		}
 	}
-
-	let selected = $state(0)
 </script>
 
 <aside
@@ -36,11 +38,11 @@
 	</div>
 
 	<ul class="h-full w-full overflow-y-scroll">
-		{#each scripts as script, idx}
+		{#each scripts as script (script.id)}
 			<li
 				class="flex preset-outlined-surface-200-800 hover:preset-tonal focus:preset-tonal"
-				class:bg-surface-300-700={selected === idx}
-				class:border-primary-300-700={selected === idx}
+				class:bg-surface-300-700={data.script?.id === script.id}
+				class:border-primary-300-700={data.script?.id === script.id}
 			>
 				<a
 					href={script.id}
@@ -49,7 +51,6 @@
 						script.metadata.type,
 						script.published
 					)} my-2 flex justify-between"
-					onclick={() => (selected = idx)}
 				>
 					{script.title}
 					<ScriptStage stage={script.metadata.stage} size={12} styles={"px-1 text-xs lg:text-sm"} />

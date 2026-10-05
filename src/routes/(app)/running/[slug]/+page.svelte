@@ -21,7 +21,7 @@
 </script>
 
 <div class="font-mono text-sm leading-tight">
-	{#each logs as log}
+	{#each logs as log (log.id)}
 		<span style="color:#{log.color}">{log.text}</span>
 		{#if log.close}<br />{/if}
 	{/each}

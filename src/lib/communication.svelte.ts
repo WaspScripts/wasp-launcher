@@ -9,12 +9,15 @@ interface ChannelEntry {
 }
 
 interface LogSegment {
+	id: number
 	text: string
 	color: string
 	close: boolean
 }
 
 const MAX_LOGS = 5000
+
+let segmentId = 0
 
 function parseLogMessage(msg: string): LogSegment[] {
 	const segments: LogSegment[] = []
@@ -40,6 +43,7 @@ function parseLogMessage(msg: string): LogSegment[] {
 		if (type === 1) {
 			if (i > textStart) {
 				segments.push({
+					id: segmentId++,
 					text: msg.slice(textStart, i),
 					color,
 					close: false
@@ -56,6 +60,7 @@ function parseLogMessage(msg: string): LogSegment[] {
 		else if (type === 2 && msg.slice(i + 3, i + 11) === "00000000") {
 			if (i > textStart) {
 				segments.push({
+					id: segmentId++,
 					text: msg.slice(textStart, i),
 					color,
 					close: false
@@ -73,6 +78,7 @@ function parseLogMessage(msg: string): LogSegment[] {
 	// Remaining text
 	if (textStart < msg.length) {
 		segments.push({
+			id: segmentId++,
 			text: msg.slice(textStart),
 			color,
 			close: true
@@ -87,6 +93,8 @@ function parseLogMessage(msg: string): LogSegment[] {
 
 class ChannelManager {
 	private _logsBuffer: Record<number, LogSegment[]> = {}
+	private _pending = new Set<number>()
+	private _frame = 0
 
 	processes = $state<number[]>([])
 	channels = $state<Record<number, ChannelEntry>>({})
@@ -106,18 +114,28 @@ class ChannelManager {
 			}
 
 			const buffer = this._logsBuffer[id]
-			const parsed = parseLogMessage(msg)
-
-			buffer.push(...parsed)
-
-			if (buffer.length > MAX_LOGS) {
-				buffer.splice(0, buffer.length - MAX_LOGS)
-			}
-
-			entry.version++
+			buffer.push(...parseLogMessage(msg))
+			if (buffer.length > MAX_LOGS * 2) buffer.splice(0, buffer.length - MAX_LOGS)
+			this.scheduleFlush(id)
 		}
 
 		return channel
+	}
+
+	private scheduleFlush(id: number) {
+		this._pending.add(id)
+		if (this._frame) return
+		this._frame = requestAnimationFrame(() => {
+			this._frame = 0
+			for (const pending of this._pending) {
+				const entry = this.channels[pending]
+				if (!entry) continue
+				const buffer = this._logsBuffer[pending]
+				if (buffer.length > MAX_LOGS) buffer.splice(0, buffer.length - MAX_LOGS)
+				entry.version++
+			}
+			this._pending.clear()
+		})
 	}
 
 	stopChannel(id: number) {

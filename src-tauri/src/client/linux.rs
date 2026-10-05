@@ -3,7 +3,9 @@ use std::{error::Error, fs};
 use serde::{Deserialize, Serialize};
 use x11rb::{
     connection::Connection,
-    protocol::xproto::{AtomEnum, ClientMessageEvent, ConnectionExt, EventMask, Window},
+    protocol::xproto::{
+        AtomEnum, ClientMessageEvent, ConnectionExt, EventMask, GetPropertyReply, Window,
+    },
     rust_connection::RustConnection,
     CURRENT_TIME,
 };
@@ -39,8 +41,18 @@ fn walk_tree(
     net_wm_pid: u32,
     matches: &mut Vec<WindowMatch>,
 ) -> Result<(), Box<dyn Error>> {
-    for child in conn.query_tree(window)?.reply()?.children {
-        let Some(pid) = get_pid(conn, child, net_wm_pid) else {
+    let children = conn.query_tree(window)?.reply()?.children;
+    let pids: Vec<_> = children
+        .iter()
+        .map(|&child| conn.get_property(false, child, net_wm_pid, AtomEnum::CARDINAL, 0, 1))
+        .collect();
+
+    for (child, pid) in children.into_iter().zip(pids) {
+        let pid = pid
+            .ok()
+            .and_then(|cookie| cookie.reply().ok())
+            .and_then(|reply| first_u32(&reply));
+        let Some(pid) = pid else {
             // Not a client window (e.g. a window manager frame), look inside it.
             // Windows can vanish mid-walk, that shouldn't abort the whole listing.
             let _ = walk_tree(conn, child, net_wm_pid, matches);
@@ -66,9 +78,20 @@ fn is_java_window(conn: &RustConnection, window: Window) -> bool {
     let Ok(Ok(tree)) = conn.query_tree(window).map(|c| c.reply()) else {
         return false;
     };
-    tree.children
+    let classes: Vec<_> = tree
+        .children
         .iter()
-        .any(|&child| get_wm_class(conn, child).as_deref() == Some(FOCUS_PROXY_CLASS))
+        .filter_map(|&child| {
+            conn.get_property(false, child, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 256)
+                .ok()
+        })
+        .collect();
+
+    classes.into_iter().any(|cookie| {
+        cookie
+            .reply()
+            .is_ok_and(|reply| wm_class(&reply.value) == Some(FOCUS_PROXY_CLASS.as_bytes()))
+    })
 }
 
 // Every window of a Java app shares the same WM_CLASS, but AWT names each one after its
@@ -94,25 +117,13 @@ fn get_wm_name(conn: &RustConnection, window: Window) -> Option<String> {
     Some(String::from_utf8_lossy(&reply.value).into_owned())
 }
 
-fn get_wm_class(conn: &RustConnection, window: Window) -> Option<String> {
-    let reply = conn
-        .get_property(false, window, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 256)
-        .ok()?
-        .reply()
-        .ok()?;
-
-    // WM_CLASS is "instance\0class\0".
-    let class = reply.value.split(|&b| b == 0).nth(1)?;
-    Some(String::from_utf8_lossy(class).into_owned())
+// WM_CLASS is "instance\0class\0".
+fn wm_class(value: &[u8]) -> Option<&[u8]> {
+    value.split(|&b| b == 0).nth(1)
 }
 
-fn get_pid(conn: &RustConnection, window: Window, net_wm_pid: u32) -> Option<u32> {
-    conn.get_property(false, window, net_wm_pid, AtomEnum::CARDINAL, 0, 1)
-        .ok()?
-        .reply()
-        .ok()?
-        .value32()?
-        .next()
+fn first_u32(reply: &GetPropertyReply) -> Option<u32> {
+    reply.value32()?.next()
 }
 
 fn process_name(pid: u32) -> String {

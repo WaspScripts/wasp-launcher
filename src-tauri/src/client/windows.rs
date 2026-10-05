@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use windows::core::BOOL;
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, RECT};
@@ -18,14 +20,30 @@ pub struct WindowMatch {
 }
 
 struct EnumContext {
-    target_pid: u32,
-    process_name: String,
+    names: HashMap<u32, String>,
+    pid: u32,
     matches: Vec<WindowMatch>,
-    found: bool,
 }
 
 pub fn list_processes() -> Result<Vec<WindowMatch>, String> {
-    let mut all_matches = Vec::new();
+    let mut context = EnumContext {
+        names: process_names()?,
+        pid: 0,
+        matches: Vec::new(),
+    };
+
+    unsafe {
+        let _ = EnumWindows(
+            Some(enum_window_callback),
+            LPARAM(&mut context as *mut EnumContext as isize),
+        );
+    }
+
+    Ok(context.matches)
+}
+
+fn process_names() -> Result<HashMap<u32, String>, String> {
+    let mut names = HashMap::new();
 
     unsafe {
         let snapshot =
@@ -36,21 +54,7 @@ pub fn list_processes() -> Result<Vec<WindowMatch>, String> {
 
         if Process32FirstW(snapshot, &mut entry).is_ok() {
             loop {
-                let process_name = string_from_u16_slice(&entry.szExeFile);
-
-                let mut context = EnumContext {
-                    target_pid: entry.th32ProcessID,
-                    process_name: process_name.clone(),
-                    matches: Vec::new(),
-                    found: false,
-                };
-
-                let _ = EnumWindows(
-                    Some(enum_window_callback),
-                    LPARAM(&mut context as *mut EnumContext as isize),
-                );
-
-                all_matches.extend(context.matches);
+                names.insert(entry.th32ProcessID, string_from_u16_slice(&entry.szExeFile));
 
                 if Process32NextW(snapshot, &mut entry).is_err() {
                     break;
@@ -61,7 +65,7 @@ pub fn list_processes() -> Result<Vec<WindowMatch>, String> {
         let _ = CloseHandle(snapshot);
     }
 
-    Ok(all_matches)
+    Ok(names)
 }
 
 extern "system" fn enum_window_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
@@ -71,20 +75,15 @@ extern "system" fn enum_window_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
 
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
 
-        if process_id == context.target_pid {
-            if check_and_add_if_match(hwnd, context) {
-                return BOOL(0);
-            }
+        if !context.names.contains_key(&process_id)
+            || context.matches.iter().any(|m| m.pid == process_id)
+        {
+            return BOOL(1);
+        }
 
-            let _ = EnumChildWindows(
-                Some(hwnd),
-                Some(enum_child_callback),
-                LPARAM(context as *mut EnumContext as isize),
-            );
-
-            if context.found {
-                return BOOL(0);
-            }
+        context.pid = process_id;
+        if !check_and_add_if_match(hwnd, context) {
+            let _ = EnumChildWindows(Some(hwnd), Some(enum_child_callback), lparam);
         }
     }
     BOOL(1)
@@ -125,12 +124,11 @@ unsafe fn check_and_add_if_match(hwnd: HWND, context: &mut EnumContext) -> bool 
     }
 
     context.matches.push(WindowMatch {
-        pid: context.target_pid,
+        pid: context.pid,
         hwnd: hwnd.0 as isize,
-        name: context.process_name.clone(),
+        name: context.names[&context.pid].clone(),
     });
 
-    context.found = true;
     true
 }
 

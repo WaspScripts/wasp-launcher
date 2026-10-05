@@ -8,7 +8,6 @@ export interface Script {
 	url: string
 	title: string
 	description: string
-	content: string
 	published: boolean
 	protected: {
 		username: string

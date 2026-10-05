@@ -1,4 +1,4 @@
-import type { Role, Script } from "./types/collection"
+import type { Role, Script, StatsLimits } from "./types/collection"
 import type { Database } from "./types/supabase"
 import { createClient, type User } from "@supabase/supabase-js"
 
@@ -114,7 +114,7 @@ export async function getScripts(role: Role) {
 		.schema("scripts")
 		.from("scripts")
 		.select(
-			`id, url, title, description, content, published,
+			`id, url, title, description, published,
 			protected!left (username, avatar, revision, updated_at),
 			metadata!left (status, type, stage)`
 		)
@@ -128,6 +128,38 @@ export async function getScripts(role: Role) {
 	if (err) {
 		console.error(err)
 		return []
+	}
+
+	return data
+}
+
+export async function getScriptContent(id: string) {
+	const { data, error: err } = await supabase
+		.schema("scripts")
+		.from("scripts")
+		.select("content")
+		.eq("id", id)
+		.single()
+
+	if (err) {
+		console.error(err)
+		return ""
+	}
+
+	return data.content
+}
+
+export async function getLimits(id: string): Promise<StatsLimits> {
+	const { data, error: err } = await supabase
+		.schema("stats")
+		.from("limits")
+		.select("xp_min, xp_max, gp_min, gp_max")
+		.eq("id", id)
+		.single()
+
+	if (err) {
+		console.error(err)
+		return { xp_min: 0, xp_max: 0, gp_min: 0, gp_max: 0 }
 	}
 
 	return data

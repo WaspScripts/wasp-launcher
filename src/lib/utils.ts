@@ -15,6 +15,7 @@ export function formatNumber(n: number): string {
 
 export function replaceScriptContent(
 	script: Script,
+	content: string,
 	limits: StatsLimits,
 	locale: string = "pt-PT"
 ) {
@@ -46,7 +47,7 @@ export function replaceScriptContent(
 		max_gp: formatNumber(Number(limits.gp_max * 12))
 	}
 
-	const result = script.content.replace(/\{\$([^{}\s$]+)\}/g, (match, placeholder) => {
+	const result = content.replace(/\{\$([^{}\s$]+)\}/g, (match, placeholder) => {
 		const value = placeholders[placeholder]
 		return value !== undefined ? value : match
 	})

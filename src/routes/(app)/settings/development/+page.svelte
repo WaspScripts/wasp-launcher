@@ -35,22 +35,37 @@
 	let deletingCache = $state(false)
 	async function deleteCache() {
 		deletingCache = true
-		await invoke("delete_cache", { exe: "devsimba" })
-		deletingCache = false
+		try {
+			await invoke("delete_cache", { exe: "devsimba" })
+		} catch (err) {
+			console.error(err)
+		} finally {
+			deletingCache = false
+		}
 	}
 
 	let deletingAssets = $state(false)
 	async function deleteAssets() {
 		deletingAssets = true
-		await invoke("delete_assets", { exe: "devsimba" })
-		deletingAssets = false
+		try {
+			await invoke("delete_assets", { exe: "devsimba" })
+		} catch (err) {
+			console.error(err)
+		} finally {
+			deletingAssets = false
+		}
 	}
 
 	let deletingConfigs = $state(false)
 	async function deleteConfigs() {
 		deletingConfigs = true
-		await invoke("delete_configs", { exe: "devsimba" })
-		deletingConfigs = false
+		try {
+			await invoke("delete_configs", { exe: "devsimba" })
+		} catch (err) {
+			console.error(err)
+		} finally {
+			deletingConfigs = false
+		}
 	}
 
 	let dialog: HTMLDialogElement
@@ -58,8 +73,13 @@
 	async function reinstallPlugins() {
 		dialog.close()
 		reinstallingPlugins = true
-		await invoke("reinstall_plugins", { exe: "devsimba" })
-		reinstallingPlugins = false
+		try {
+			await invoke("reinstall_plugins", { exe: "devsimba" })
+		} catch (err) {
+			console.error(err)
+		} finally {
+			reinstallingPlugins = false
+		}
 	}
 
 	const info = `### This section is only for people that are interested in development.

@@ -10,25 +10,20 @@
 	const { process, channel } = $derived(data)
 	let search = $state("")
 
-	const [stopped, running] = $derived(
-		channelManager.processes.reduce<[number[], number[]]>(
+	const [stopped, running] = $derived.by(() => {
+		const query = search.trim().toLowerCase()
+		return channelManager.processes.reduce<[number[], number[]]>(
 			(acc, idx) => {
-				channelManager.channels[idx]?.stopped ? acc[0].push(idx) : acc[1].push(idx)
+				const entry = channelManager.channels[idx]
+				if (!entry || (query && !entry.name.toLowerCase().includes(query))) return acc
+				entry.stopped ? acc[0].push(idx) : acc[1].push(idx)
 				return acc
 			},
 			[[], []]
 		)
-	)
-
-	const selected = $derived.by(() => {
-		const i = running.indexOf(process)
-		if (i > -1) return i
-		const idx = stopped.indexOf(process)
-		if (idx == -1) return 0
-		return idx + running.length
 	})
 
-	const hasProcesses = $derived(running.length > 0 || stopped.length > 0)
+	const hasProcesses = $derived(channelManager.processes.length > 0)
 
 	function getRuntime(start: number, finish: number): string {
 		const time = finish - start
@@ -44,16 +39,13 @@
 			.padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
 	}
 
-	let runtime = $state("00:00:00")
+	let now = $state(Date.now())
 
-	const runtimeInterval = setInterval(() => {
-		if (!channel) {
-			clearInterval(runtimeInterval)
-			return
-		}
-		if (channel.stopped) runtime = getRuntime(channel.start, channel.finish)
-		else runtime = getRuntime(channel.start, Date.now())
-	}, 1000)
+	const runtime = $derived(
+		channel ? getRuntime(channel.start, channel.stopped ? channel.finish : now) : "00:00:00"
+	)
+
+	const runtimeInterval = setInterval(() => (now = Date.now()), 1000)
 
 	onDestroy(() => clearInterval(runtimeInterval))
 </script>
@@ -74,11 +66,11 @@
 	</div>
 
 	<ul class="h-full w-full overflow-y-scroll">
-		{#each running as entry, idx}
+		{#each running as entry (entry)}
 			<li
 				class="flex preset-outlined-surface-200-800 text-sm hover:preset-tonal focus:preset-tonal"
-				class:bg-surface-300-700={selected === idx}
-				class:border-primary-300-700={selected === idx}
+				class:bg-surface-300-700={process === entry}
+				class:border-primary-300-700={process === entry}
 			>
 				<a href={"/running/" + entry} class="my-2 flex h-full w-full justify-between px-2">
 					{channelManager.channels[entry].name}
@@ -86,11 +78,11 @@
 			</li>
 		{/each}
 
-		{#each stopped as entry, idx}
+		{#each stopped as entry (entry)}
 			<li
 				class="flex preset-outlined-surface-200-800 text-surface-700-300 hover:preset-tonal hover:text-surface-800-200 focus:preset-tonal"
-				class:bg-surface-300-700={selected === idx + running.length}
-				class:border-primary-300-700={selected === idx + running.length}
+				class:bg-surface-300-700={process === entry}
+				class:border-primary-300-700={process === entry}
 			>
 				<a href={"/running/" + entry} class="my-2 flex h-full w-full justify-between px-2">
 					{channelManager.channels[entry].name}
@@ -122,11 +114,11 @@
 					<span> Copy </span>
 					<Copy size={16} />
 				</button>
-				{#if selected < running.length}
+				{#if channel && !channel.stopped}
 					<button
 						class="btn btn-group flex gap-2 rounded-lg border border-surface-500 bg-surface-500/70 p-2"
 						onclick={async () => {
-							const result = await invoke("kill_script", { id: running[selected] })
+							const result = await invoke("kill_script", { id: process })
 							console.log("kill_script: ", result)
 						}}
 					>
@@ -137,7 +129,7 @@
 					<button
 						class="btn rounded-lg border border-surface-500 bg-surface-500/70 p-2"
 						onclick={async () => {
-							channelManager.removeChannel(stopped[selected - running.length])
+							channelManager.removeChannel(process)
 							await Promise.all([invalidate("layout:channel"), invalidate("layout:running")])
 							await goto("/running")
 						}}

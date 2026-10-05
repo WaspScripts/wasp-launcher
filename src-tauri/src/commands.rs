@@ -2,16 +2,17 @@ use std::{
     fs::{create_dir_all, metadata, remove_dir_all, remove_file, set_permissions, File},
     io::Write,
     net::TcpListener,
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
+    path::{Component, Path, PathBuf},
+    sync::{Arc, Mutex},
     thread,
 };
 
+use percent_encoding::percent_decode_str;
 use serde_json::json;
-use tauri::{ipc::Channel, Emitter, Manager, State};
+use tauri::{
+    ipc::{Channel, InvokeBody, Request},
+    Emitter, Manager, State,
+};
 use tauri_plugin_store::StoreExt;
 
 use crate::{
@@ -23,6 +24,26 @@ use crate::{
     },
     LauncherVariables,
 };
+
+fn simba_dir(launcher_vars: &State<'_, Mutex<LauncherVariables>>, exe: &str) -> PathBuf {
+    let paths = launcher_vars.lock().unwrap();
+    if exe == "devsimba" {
+        paths.devsimba.clone()
+    } else {
+        paths.simba.clone()
+    }
+}
+
+async fn delete_dir(path: PathBuf) -> tauri::Result<()> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if path.exists() {
+            remove_dir_all(&path)?;
+            println!("Deleted folder: {:?}", path);
+        }
+        Ok(())
+    })
+    .await?
+}
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -69,12 +90,7 @@ pub fn set_dev_updates(
 
 #[tauri::command]
 pub fn get_executable_path(launcher: State<'_, Mutex<LauncherVariables>>, exe: String) -> String {
-    let paths = launcher.lock().unwrap();
-    match exe.as_str() {
-        "simba" => paths.simba.to_str().unwrap().to_string(),
-        "devsimba" => paths.devsimba.to_str().unwrap().to_string(),
-        _ => paths.simba.to_str().unwrap().to_string(),
-    }
+    simba_dir(&launcher, &exe).to_string_lossy().into_owned()
 }
 
 #[tauri::command]
@@ -94,7 +110,12 @@ pub fn set_executable_path(
     let store = app
         .store("settings.json")
         .expect("Failed to retrieve settings.json store!");
-    store.set("paths", json!({exe.as_str(): path}));
+    let mut paths = store
+        .get("paths")
+        .filter(|v| v.is_object())
+        .unwrap_or_else(|| json!({}));
+    paths[exe.as_str()] = json!(path);
+    store.set("paths", paths);
 }
 
 #[tauri::command]
@@ -124,91 +145,62 @@ pub fn set_simba_scale(
 }
 
 #[tauri::command]
-pub fn delete_cache(
+pub async fn delete_cache(
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
 ) -> tauri::Result<()> {
-    let path = {
-        let paths = launcher_vars.lock().unwrap();
-        if exe == "devsimba" {
-            paths.devsimba.clone()
-        } else {
-            paths.simba.clone()
-        }
-    };
-    let cache_path = path.join("Data").join("Cache");
-
-    if cache_path.exists() {
-        remove_dir_all(&cache_path).expect("Failed to delete cache path.");
-        println!("Deleted folder: {:?}", cache_path);
-    }
-
-    Ok(())
+    delete_dir(simba_dir(&launcher_vars, &exe).join("Data").join("Cache")).await
 }
 
 #[tauri::command]
-pub fn delete_assets(
+pub async fn delete_assets(
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
 ) -> tauri::Result<()> {
-    let path = {
-        let paths = launcher_vars.lock().unwrap();
-        if exe == "devsimba" {
-            paths.devsimba.clone()
-        } else {
-            paths.simba.clone()
-        }
-    };
-
-    let assets_path = path.join("Data").join("Assets");
-
-    if assets_path.exists() {
-        remove_dir_all(&assets_path).expect("Failed to delete assets path.");
-        println!("Deleted folder: {:?}", assets_path);
-    }
-
-    Ok(())
+    delete_dir(simba_dir(&launcher_vars, &exe).join("Data").join("Assets")).await
 }
 
 #[tauri::command]
-pub fn delete_configs(
+pub async fn delete_configs(
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
 ) -> tauri::Result<()> {
-    let path = {
-        let paths = launcher_vars.lock().unwrap();
-        if exe == "devsimba" {
-            paths.devsimba.clone()
-        } else {
-            paths.simba.clone()
-        }
-    };
-
-    let configs = path.join("Configs");
-
-    if configs.exists() {
-        remove_dir_all(&configs).expect("Failed to delete configs path.");
-        println!("Deleted folder: {:?}", configs);
-    }
-
-    Ok(())
+    delete_dir(simba_dir(&launcher_vars, &exe).join("Configs")).await
 }
 
 #[tauri::command]
-pub fn save_blob(
-    app: tauri::AppHandle,
-    path: String,
-    filename: String,
-    data: Vec<u8>,
-) -> Result<(), String> {
+pub async fn save_blob(app: tauri::AppHandle, request: Request<'_>) -> Result<(), String> {
+    let InvokeBody::Raw(data) = request.body() else {
+        return Err("Expected raw bytes".to_string());
+    };
+
+    let header = |name: &str| -> Result<String, String> {
+        let value = request
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .ok_or_else(|| format!("Missing {} header", name))?;
+        percent_decode_str(value)
+            .decode_utf8()
+            .map(|s| s.into_owned())
+            .map_err(|e| e.to_string())
+    };
+
+    let relative = Path::new(&header("path")?).join(header("filename")?);
+    if !relative
+        .components()
+        .all(|c| matches!(c, Component::Normal(_)))
+    {
+        return Err(format!("Invalid file path: {}", relative.display()));
+    }
+
     let file_path = app
         .path()
         .app_local_data_dir()
-        .expect("App Local Data Dir doesn't exist on this system")
+        .map_err(|e| e.to_string())?
         .join("Simba")
         .join("Scripts")
-        .join(path)
-        .join(filename);
+        .join(relative);
 
     if let Some(parent) = file_path.parent() {
         create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -221,7 +213,7 @@ pub fn save_blob(
     println!("File path: {:?}", file_path);
 
     let mut file = File::create(&file_path).map_err(|e| e.to_string())?;
-    file.write_all(&data).map_err(|e| e.to_string())?;
+    file.write_all(data).map_err(|e| e.to_string())?;
     drop(file);
 
     let mut perms = metadata(&file_path)
@@ -360,6 +352,7 @@ pub async fn kill_script(
 
         if let Some(mut child) = process_guard.take() {
             let result = child.kill().map_err(|e| e.to_string());
+            let _ = child.wait();
 
             let launcher_guard = launcher.lock().unwrap();
             launcher_guard.scripts.lock().unwrap().remove(&id);
@@ -390,19 +383,12 @@ pub fn start_server(app: tauri::AppHandle) {
 
     println!("Auth Server listening on localhost:5217");
 
-    let running = Arc::new(AtomicBool::new(true));
-    let running_clone = running.clone();
-
     thread::spawn(move || {
-        for stream in listener
-            .incoming()
-            .take_while(|_| running_clone.load(Ordering::Relaxed))
-        {
+        for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    let app_clone = app.clone();
-                    if handle_client(stream, app_clone) {
-                        running_clone.store(false, Ordering::Relaxed);
+                    if handle_client(stream, app.clone()) {
+                        break;
                     }
                 }
                 Err(e) => eprintln!("Error: {}", e),
@@ -442,11 +428,8 @@ pub async fn sign_up(id: String) -> Result<String, String> {
 pub fn get_plugin_version(
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
 ) -> Result<String, String> {
-    let path = {
-        let paths = launcher_vars.lock().unwrap();
-        paths.simba.clone()
-    };
-    let version_path = path.join("Plugins/wasp-plugins/version.simba");
+    let version_path =
+        simba_dir(&launcher_vars, "simba").join("Plugins/wasp-plugins/version.simba");
 
     read_plugins_version(&version_path).map_err(|e| e.to_string())
 }
@@ -457,22 +440,12 @@ pub async fn reinstall_plugins(
     launcher_vars: State<'_, Mutex<LauncherVariables>>,
     exe: String,
 ) -> tauri::Result<()> {
-    let path = {
-        let paths = launcher_vars.lock().unwrap();
-        if exe == "devsimba" {
-            paths.devsimba.clone()
-        } else {
-            paths.simba.clone()
-        }
-    };
-
     println!("Reinstalling plugins!");
-    let plugins_path = path.join("Plugins").join("wasp-plugins");
+    let plugins_path = simba_dir(&launcher_vars, &exe)
+        .join("Plugins")
+        .join("wasp-plugins");
 
-    if plugins_path.exists() {
-        remove_dir_all(&plugins_path).expect("Failed to delete wasp-plugins path.");
-        println!("Deleted folder: {:?}", plugins_path);
-    }
+    delete_dir(plugins_path.clone()).await?;
 
     let _ = sync_plugins_repo(&app, &plugins_path).await;
 

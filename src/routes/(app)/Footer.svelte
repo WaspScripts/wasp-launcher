@@ -24,10 +24,9 @@
 	}
 
 	async function saveBlobToFile(blob: Blob, path: string, filename: string) {
-		const arrayBuffer = await blob.arrayBuffer()
-		const data = Array.from(new Uint8Array(arrayBuffer))
-
-		await invoke("save_blob", { path, filename, data })
+		await invoke("save_blob", await blob.arrayBuffer(), {
+			headers: { path: encodeURIComponent(path), filename: encodeURIComponent(filename) }
+		})
 	}
 
 	async function getVersions(id: string) {
@@ -47,6 +46,11 @@
 
 	const versionsPromise = $derived(getVersions(script.id))
 	let revision = $state(0)
+
+	$effect.pre(() => {
+		script?.id
+		revision = 0
+	})
 
 	async function getNewSessionToken() {
 		let result = ""
@@ -71,6 +75,7 @@
 	async function execute() {
 		const versions = await versionsPromise
 		const version = versions[revision]
+		if (!version) return
 
 		const scriptName = script.url + "-rev-" + version.revision
 		const mainFile = scriptName + "/" + scriptName + ".simba"

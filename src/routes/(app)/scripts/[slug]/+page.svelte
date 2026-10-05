@@ -5,31 +5,6 @@
 	import ScriptHeader from "./ScriptHeader.svelte"
 	let { data } = $props()
 	const script = $derived(data.script)!
-
-	let limits = $state({
-		xp_min: 0,
-		xp_max: 0,
-		gp_min: 0,
-		gp_max: 0
-	})
-
-	async function getLimits() {
-		const { data: limitsData, error: err } = await data.supabase
-			.schema("stats")
-			.from("limits")
-			.select("xp_min, xp_max, gp_min, gp_max")
-			.eq("id", script.id)
-			.single()
-		if (err) {
-			console.error(err)
-			return
-		}
-		limits = limitsData
-	}
-
-	getLimits()
-
-	let content = $derived(replaceScriptContent(script, limits))
 </script>
 
 <ScriptHeader
@@ -56,6 +31,8 @@
 	{/if}
 
 	<article class="my-4 prose dark:prose-invert">
-		{@html mdRenderer.render(content)}
+		{#await data.details then [content, limits]}
+			{@html mdRenderer.render(replaceScriptContent(script, content, limits))}
+		{/await}
 	</article>
 </div>

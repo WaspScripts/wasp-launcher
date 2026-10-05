@@ -1,7 +1,7 @@
 import { getData } from "$lib/supabase"
 import { redirect } from "@sveltejs/kit"
 
-export const load = async ({ parent, params: { slug } }) => {
+export const load = async ({ parent }) => {
 	const { session, profile } = await parent()
 	console.log("📜Loading scripts page!")
 	if (!session || !profile) {
@@ -10,7 +10,6 @@ export const load = async ({ parent, params: { slug } }) => {
 
 	const scripts = await getData(profile)
 	if (scripts.length === 0) redirect(303, "/auth")
-	const script = scripts.find((script) => script.id === slug)
 
-	return { scripts, script }
+	return { scripts }
 }

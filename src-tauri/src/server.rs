@@ -65,9 +65,9 @@ pub fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
         "error": error
     });
 
-    let _ = app
-        .emit("oauth-callback", payload)
-        .expect("Failed to ping the front-end!");
+    if let Err(e) = app.emit("oauth-callback", payload) {
+        eprintln!("Failed to ping the front-end: {}", e);
+    }
 
     true
 }
