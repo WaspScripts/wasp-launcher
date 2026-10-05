@@ -24,13 +24,13 @@
 	class="flex h-full max-w-96 min-w-44 flex-col gap-2 border-r border-surface-500 p-2 text-sm lg:min-w-64"
 >
 	<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
-		<div class="ig-cell preset-tonal px-2">
+		<div class="ig-cell preset-tonal px-1 md:px-2">
 			<SearchIcon size={16} />
 		</div>
 		<input
 			type="text"
 			placeholder="Search script..."
-			class="input ig-input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
+			class="ig-input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
 			bind:value={search}
 		/>
 	</div>
@@ -38,13 +38,13 @@
 	<ul class="h-full w-full overflow-y-scroll">
 		{#each scripts as script, idx}
 			<li
-				class="flex preset-outlined-success-200-800 hover:preset-tonal focus:preset-tonal"
+				class="flex preset-outlined-surface-200-800 hover:preset-tonal focus:preset-tonal"
 				class:bg-surface-300-700={selected === idx}
 				class:border-primary-300-700={selected === idx}
 			>
 				<a
 					href={script.id}
-					class="h-full w-full px-2 {getStyle(
+					class="h-full w-full px-1 md:px-2 {getStyle(
 						script.access,
 						script.metadata.type,
 						script.published

@@ -62,13 +62,13 @@
 	class="flex h-full max-w-96 min-w-44 flex-col gap-2 border-r border-surface-500 p-2 text-sm lg:min-w-64"
 >
 	<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
-		<div class="ig-cell preset-tonal px-2">
+		<div class="ig-cell preset-tonal px-1 md:px-2">
 			<SearchIcon size={16} />
 		</div>
 		<input
 			type="text"
 			placeholder="Search script..."
-			class="input ig-input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
+			class="ig-input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
 			bind:value={search}
 		/>
 	</div>
@@ -76,7 +76,7 @@
 	<ul class="h-full w-full overflow-y-scroll">
 		{#each running as entry, idx}
 			<li
-				class="flex preset-outlined-success-200-800 text-sm hover:preset-tonal focus:preset-tonal"
+				class="flex preset-outlined-surface-200-800 text-sm hover:preset-tonal focus:preset-tonal"
 				class:bg-surface-300-700={selected === idx}
 				class:border-primary-300-700={selected === idx}
 			>
@@ -88,7 +88,7 @@
 
 		{#each stopped as entry, idx}
 			<li
-				class="flex preset-outlined-success-200-800 text-surface-700-300 hover:preset-tonal hover:text-surface-800-200 focus:preset-tonal"
+				class="flex preset-outlined-surface-200-800 text-surface-700-300 hover:preset-tonal hover:text-surface-800-200 focus:preset-tonal"
 				class:bg-surface-300-700={selected === idx + running.length}
 				class:border-primary-300-700={selected === idx + running.length}
 			>
