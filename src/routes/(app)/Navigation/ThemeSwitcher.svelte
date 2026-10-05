@@ -20,7 +20,7 @@
 
 	async function updateTheme(value: string) {
 		current = value
-		document.body.setAttribute("data-theme", current)
+		document.documentElement.setAttribute("data-theme", current)
 		await settings.set("theme", current)
 	}
 </script>

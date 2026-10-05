@@ -43,8 +43,8 @@ export const load = async ({ depends, url: { searchParams } }) => {
 
 	// Apply mode, theme and sidebar in a single pass before anything renders
 	document.documentElement.setAttribute("data-mode", dark ? "dark" : "light")
+	document.documentElement.setAttribute("data-theme", theme)
 	document.documentElement.classList.toggle("sidebar", sidebar)
-	document.body.setAttribute("data-theme", theme)
 
 	return {
 		supabase,

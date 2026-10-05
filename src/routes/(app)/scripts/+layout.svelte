@@ -23,14 +23,14 @@
 <aside
 	class="flex h-full max-w-96 min-w-44 flex-col gap-2 border-r border-surface-500 p-2 text-sm lg:min-w-64"
 >
-	<div class="input-group h-9 grid-cols-[auto_1fr_auto]">
-		<div class="ig-cell preset-tonal px-1 md:px-2">
+	<div class="input-group grid-cols-[auto_1fr_auto] overflow-visible text-scaling">
+		<div class="ig-cell px-1 md:px-2">
 			<SearchIcon size={16} />
 		</div>
 		<input
 			type="text"
 			placeholder="Search script..."
-			class="ig-input outline-1 outline-surface-300-700 placeholder:text-surface-600-400"
+			class="ig-input h-full placeholder:text-surface-600-400"
 			bind:value={search}
 		/>
 	</div>

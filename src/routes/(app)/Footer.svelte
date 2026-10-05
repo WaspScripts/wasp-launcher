@@ -178,9 +178,10 @@
 	{#if script}
 		<div class="flex min-w-0 gap-2">
 			{#if script.access}
-				<div class="input-group h-8 grid-cols-[auto_1fr_auto]">
+				<div class="input-group grid-cols-[auto_1fr_auto]">
 					<button
-						class="group ig-cell gap-2 hover:preset-tonal"
+						class="group ig-cell gap-0 text-scaling
+						enabled:hover:gap-2 enabled:hover:preset-tonal"
 						title={lg.current ? undefined : "Refresh clients"}
 						onclick={async () => {
 							client = -1
@@ -189,7 +190,9 @@
 						}}
 					>
 						<span
-							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300 lg:group-hover:max-w-32 lg:group-hover:opacity-100"
+							class="max-w-0 overflow-hidden
+							whitespace-nowrap opacity-0 duration-300
+							lg:group-hover:max-w-36 lg:group-hover:opacity-100"
 						>
 							Refresh clients
 						</span>
@@ -197,7 +200,8 @@
 					</button>
 
 					<button
-						class="group ig-cell gap-2 enabled:hover:preset-tonal"
+						class="group ig-cell gap-0 text-scaling
+						enabled:hover:preset-tonal lg:enabled:hover:gap-2"
 						disabled={client < 0}
 						title={lg.current ? undefined : "Show client"}
 						onclick={async () => {
@@ -205,7 +209,8 @@
 						}}
 					>
 						<span
-							class="max-w-0 overflow-hidden whitespace-nowrap opacity-0 duration-300
+							class="max-w-0 overflow-hidden whitespace-nowrap
+							opacity-0 duration-300
 							lg:group-enabled:group-hover:max-w-32 lg:group-enabled:group-hover:opacity-100"
 						>
 							Show client
@@ -236,7 +241,7 @@
 
 				<select
 					id="revision"
-					class="select w-28 hover:preset-tonal md:w-36 lg:w-44"
+					class="select w-28 text-scaling hover:preset-tonal md:w-36 lg:w-44"
 					bind:value={revision}
 				>
 					{#await versionsPromise then versions}
