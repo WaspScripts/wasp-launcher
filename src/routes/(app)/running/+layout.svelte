@@ -10,6 +10,11 @@
 	const { process, channel } = $derived(data)
 	let search = $state("")
 
+	$effect.pre(() => {
+		process
+		search = ""
+	})
+
 	const [stopped, running] = $derived.by(() => {
 		const query = search.trim().toLowerCase()
 		return channelManager.processes.reduce<[number[], number[]]>(

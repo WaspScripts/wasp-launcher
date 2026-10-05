@@ -4,6 +4,12 @@
 
 	let { data, children } = $props()
 	let search = $state("")
+
+	$effect.pre(() => {
+		data.script?.id
+		search = ""
+	})
+
 	const scripts = $derived.by(() => {
 		const query = search.trim().toLowerCase()
 		if (!query) return data.scripts
