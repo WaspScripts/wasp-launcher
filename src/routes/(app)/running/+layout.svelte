@@ -65,14 +65,14 @@
 		/>
 	</div>
 
-	<ul class="h-full w-full overflow-y-scroll">
+	<ul class="h-full w-full overflow-y-scroll pr-2">
 		{#each running as entry (entry)}
 			<li
 				class="flex preset-outlined-surface-200-800 text-sm hover:preset-tonal focus:preset-tonal"
 				class:bg-surface-300-700={process === entry}
 				class:border-primary-300-700={process === entry}
 			>
-				<a href={"/running/" + entry} class="my-2 flex h-full w-full justify-between px-2">
+				<a href={"/running/" + entry} class="flex w-full justify-between px-2 py-2">
 					{channelManager.channels[entry].name}
 				</a>
 			</li>
@@ -84,7 +84,7 @@
 				class:bg-surface-300-700={process === entry}
 				class:border-primary-300-700={process === entry}
 			>
-				<a href={"/running/" + entry} class="my-2 flex h-full w-full justify-between px-2">
+				<a href={"/running/" + entry} class="flex w-full justify-between px-2 py-2">
 					{channelManager.channels[entry].name}
 				</a>
 			</li>

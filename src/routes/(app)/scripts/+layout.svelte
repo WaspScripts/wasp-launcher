@@ -23,9 +23,9 @@
 </script>
 
 <aside
-	class="flex h-full max-w-96 min-w-44 flex-col gap-2 border-r border-surface-500 p-2 text-sm lg:min-w-64"
+	class="flex h-full max-w-96 min-w-44 flex-col gap-2 border-r border-surface-500 py-2 pl-2 text-sm lg:min-w-64"
 >
-	<div class="input-group grid-cols-[auto_1fr_auto] overflow-visible text-scaling">
+	<div class="mr-2 input-group grid-cols-[auto_1fr_auto] overflow-visible text-scaling">
 		<div class="ig-cell px-1 md:px-2">
 			<SearchIcon size={16} />
 		</div>
@@ -37,7 +37,7 @@
 		/>
 	</div>
 
-	<ul class="h-full w-full overflow-y-scroll">
+	<ul class="h-full overflow-y-scroll pr-2">
 		{#each scripts as script (script.id)}
 			<li
 				class="flex preset-outlined-surface-200-800 hover:preset-tonal focus:preset-tonal"
@@ -46,11 +46,11 @@
 			>
 				<a
 					href={script.id}
-					class="h-full w-full px-1 md:px-2 {getStyle(
+					class="w-full px-1 py-2 md:px-2 {getStyle(
 						script.access,
 						script.metadata.type,
 						script.published
-					)} my-2 flex justify-between"
+					)} flex justify-between"
 				>
 					{script.title}
 					<ScriptStage stage={script.metadata.stage} size={12} styles={"px-1 text-xs lg:text-sm"} />
