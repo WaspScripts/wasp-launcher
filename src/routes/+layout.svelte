@@ -6,14 +6,10 @@
 	import { channelManager } from "$lib/communication.svelte"
 
 	let { data, children } = $props()
-	const { supabase, session, dark, theme, sidebar } = $derived(data)
+	const { supabase, session } = $derived(data)
 
 	let callTimestamps: number[] = []
 	onMount(() => {
-		document.documentElement.classList.toggle("dark", dark)
-		document.body.setAttribute("data-theme", theme)
-		document.documentElement.classList.toggle("sidebar", sidebar)
-
 		const unlisten = listen<string>("process-finished", async (event) => {
 			const channel = Number(event.payload)
 			console.log(`Process finished: ${channel}`)

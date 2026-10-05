@@ -37,14 +37,23 @@ export const load = async ({ depends, url: { searchParams } }) => {
 	devModeStore.set(promises[5])
   devUpdatesStore.set(promises[6])
 
+	const dark = (settingValues[0] as boolean) ?? true
+	const theme = (settingValues[1] as string) ?? "wasp"
+	const sidebar = (settingValues[2] as boolean) ?? true
+
+	// Apply mode, theme and sidebar in a single pass before anything renders
+	document.documentElement.setAttribute("data-mode", dark ? "dark" : "light")
+	document.documentElement.classList.toggle("sidebar", sidebar)
+	document.body.setAttribute("data-theme", theme)
+
 	return {
 		supabase,
 		session: promises[0],
 		profile: promises[2],
 		simbaPath: promises[3],
 		settings,
-		dark: (settingValues[0] as boolean) ?? true,
-		theme: (settingValues[1] as string) ?? "wasp",
-		sidebar: (settingValues[2] as boolean) ?? true
+		dark,
+		theme,
+		sidebar
 	}
 }

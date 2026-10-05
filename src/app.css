@@ -8,7 +8,7 @@
 @import "@skeletonlabs/skeleton/themes/fennec";
 @import "./wasp";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where([data-mode=dark], [data-mode=dark] *));
 
 @import "@skeletonlabs/skeleton-svelte";
 
@@ -17,6 +17,20 @@
 	[data-theme] {
 		--text-scaling: 1;
 		--base-font-size: 0.9375rem;
+	}
+}
+
+/* Smaller still below tailwind's `md` breakpoint */
+@media (width < 48rem) {
+	[data-theme] {
+		--base-font-size: 0.875rem;
+	}
+}
+
+/* And smallest below tailwind's `sm` breakpoint */
+@media (width < 40rem) {
+	[data-theme] {
+		--base-font-size: 0.8125rem;
 	}
 }
 
@@ -32,8 +46,8 @@
 	}
 }
 
-html.dark .shiki,
-html.dark .shiki span {
+[data-mode="dark"] .shiki,
+[data-mode="dark"] .shiki span {
 	color: var(--shiki-dark) !important;
 	background-color: var(--shiki-dark-bg) !important;
 	/* Optional, if you also want font styles */

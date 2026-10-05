@@ -9,7 +9,7 @@
 
 	async function toggleDarkMode() {
 		current = !current
-		document.documentElement.classList.toggle("dark")
+		document.documentElement.setAttribute("data-mode", current ? "dark" : "light")
 		await settings.set("dark", current)
 	}
 </script>
