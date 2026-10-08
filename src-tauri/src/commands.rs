@@ -170,8 +170,13 @@ pub async fn delete_configs(
 
 #[tauri::command]
 pub async fn save_blob(app: tauri::AppHandle, request: Request<'_>) -> Result<(), String> {
-    let InvokeBody::Raw(data) = request.body() else {
-        return Err("Expected raw bytes".to_string());
+    // Raw bytes arrive as `InvokeBody::Raw` over the custom protocol IPC, but when the webview
+    // falls back to the postMessage IPC they're serialized to a JSON array of numbers instead.
+    let data: std::borrow::Cow<[u8]> = match request.body() {
+        InvokeBody::Raw(data) => data.into(),
+        InvokeBody::Json(value) => serde_json::from_value::<Vec<u8>>(value.clone())
+            .map_err(|_| "Expected raw bytes".to_string())?
+            .into(),
     };
 
     let header = |name: &str| -> Result<String, String> {
@@ -213,7 +218,7 @@ pub async fn save_blob(app: tauri::AppHandle, request: Request<'_>) -> Result<()
     println!("File path: {:?}", file_path);
 
     let mut file = File::create(&file_path).map_err(|e| e.to_string())?;
-    file.write_all(data).map_err(|e| e.to_string())?;
+    file.write_all(&data).map_err(|e| e.to_string())?;
     drop(file);
 
     let mut perms = metadata(&file_path)
