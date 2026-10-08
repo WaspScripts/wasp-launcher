@@ -17,9 +17,17 @@ jobs:
         include:
           - platform: "windows-latest"
             args: ""
+          - platform: "ubuntu-22.04"
+            args: "--bundles appimage,deb"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - uses: pnpm/action-setup@v4
         name: Install pnpm
@@ -60,19 +68,54 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+  notify:
+    needs: publish-tauri
+    if: ${{ always() && github.event.workflow_run.conclusion == 'success' && github.repository_owner == 'WaspScripts' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
       - name: Discord notification
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEBHOOK: ${{ secrets.UPDATES_WEBHOOK }}
+          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          COMMIT_ID: ${{ github.event.workflow_run.head_commit.id }}
+          COMMIT_AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
         run: |
+          JOBS=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" --paginate)
+
+          status() {
+            local c
+            c=$(jq -r --arg n "publish-tauri ($1)" '.jobs[] | select(.name == $n) | .conclusion' <<< "$JOBS" | head -n1)
+            [ "$c" = "success" ] && echo "success" || echo "failed"
+          }
+
+          WIN=$(status windows-latest)
+          LIN=$(status ubuntu-22.04)
+
+          line() {
+            # diff code blocks render "+" lines green and "-" lines red in Discord
+            if [ "$2" = "success" ]; then echo "+ $1: successful"; else echo "- $1: failed"; fi
+          }
+
+          if [ "$WIN" = "success" ] && [ "$LIN" = "success" ]; then
+            COLOR=5763719   # green
+          elif [ "$WIN" = "failed" ] && [ "$LIN" = "failed" ]; then
+            COLOR=15548997  # red
+          else
+            COLOR=16742912  # orange
+          fi
+
+          DESC=$(printf '%s\n\n```diff\n%s\n%s\n```\nDownload: https://github.com/WaspScripts/wasp-launcher/releases/latest' \
+            "$COMMIT_MESSAGE" "$(line Windows "$WIN")" "$(line Linux "$LIN")")
+
           BODY=$(jq -nc \
             --arg title "WaspLauncher Updated" \
-            --arg desc "${{ github.event.workflow_run.head_commit.message }}
-
-            Download: https://github.com/WaspScripts/wasp-launcher/releases/latest" \
-            --arg url  "https://github.com/WaspScripts/wasp-launcher/commit/${{ github.event.workflow_run.head_commit.id }}" \
-            --arg foot "Author: ${{ github.event.workflow_run.head_commit.author.name }}" \
-            --argjson color 16742912 \
+            --arg desc "$DESC" \
+            --arg url "https://github.com/WaspScripts/wasp-launcher/commit/$COMMIT_ID" \
+            --arg foot "Author: $COMMIT_AUTHOR" \
+            --argjson color "$COLOR" \
             '{embeds:[{title:$title,description:$desc,url:$url,color:$color,footer:{text:$foot}}]}')
-          curl \
-              -H "Content-Type: application/json" \
-              -d "$BODY" \
-              ${{ secrets.UPDATES_WEBHOOK }}
+          curl -H "Content-Type: application/json" -d "$BODY" "$WEBHOOK"
