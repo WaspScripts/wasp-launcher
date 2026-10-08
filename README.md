@@ -34,15 +34,35 @@ The binary uses the WebKitGTK installed on your system, so you need to install i
 | Debian / Ubuntu | `sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0` |
 | Fedora | `sudo dnf install webkit2gtk4.1 gtk3` |
 
-Then extract it and run it:
+Then install it with the install script:
 
 ```sh
-mkdir -p ~/.local/bin
-tar -xzf wasp-launcher-linux-x86_64.tar.gz -C ~/.local/bin
-wasp-launcher
+curl -fsSL https://raw.githubusercontent.com/WaspScripts/wasp-launcher/main/scripts/install-linux.sh | bash
 ```
 
-The binary does not update itself. Download a new release to update.
+This puts the binary in `~/.local/bin/wasp-launcher`, adds an app menu entry and icon, and installs an update command next to it. Make sure `~/.local/bin` is in your `PATH`.
+
+#### Updating
+
+The binary does not update itself. Run the update command, which downloads the latest release if there is a newer one:
+
+```sh
+wasp-launcher-update
+```
+
+Add `--force` to reinstall the current version. To use a shorter name, add an alias:
+
+```sh
+# bash / zsh: add to ~/.bashrc or ~/.zshrc
+alias wasp-update='wasp-launcher-update'
+
+# fish: run once
+alias --save wasp-update 'wasp-launcher-update'
+```
+
+If WaspLauncher is open while you update, close and reopen it to use the new version.
+
+Prefer to do it by hand? Download `wasp-launcher-linux-x86_64.tar.gz` from the [latest release](https://github.com/WaspScripts/wasp-launcher/releases/latest) and extract it with `tar -xzf wasp-launcher-linux-x86_64.tar.gz -C ~/.local/bin`.
 
 ### AppImage
 
