@@ -402,7 +402,7 @@ pub fn start_server(app: tauri::AppHandle) {
 pub async fn sign_up(id: String) -> Result<String, String> {
     println!("Sign up for user {}", id);
 
-    let url = "https://waspscripts.dev/auth/launcher/";
+    let url = "https://waspscripts.com/auth/launcher/";
 
     let body = json!({
         "user_id": id

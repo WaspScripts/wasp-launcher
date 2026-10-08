@@ -2,7 +2,7 @@ import type { Role, Script, StatsLimits } from "./types/collection"
 import type { Database } from "./types/supabase"
 import { createClient, type User } from "@supabase/supabase-js"
 
-export const DATABASE_URL = "https://db.waspscripts.dev/"
+export const DATABASE_URL = "https://db.waspscripts.com/"
 
 export const supabase = createClient<Database>(
 	DATABASE_URL,

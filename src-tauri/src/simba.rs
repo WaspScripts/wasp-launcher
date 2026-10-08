@@ -17,7 +17,7 @@ use tauri::{
 use tauri_plugin_http::reqwest::Client;
 use zip::ZipArchive;
 
-const SUPABASE_URL: &str = "https://db.waspscripts.dev/";
+const SUPABASE_URL: &str = "https://db.waspscripts.com/";
 // Shared so every request reuses the same connection pool and TLS setup.
 pub static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 

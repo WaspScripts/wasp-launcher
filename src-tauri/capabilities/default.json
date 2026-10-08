@@ -17,10 +17,10 @@
 					"url": "http://localhost:*"
 				},
 				{
-					"url": "https://api.waspscripts.dev"
+					"url": "https://api.waspscripts.com"
 				},
 				{
-					"url": "https://db.waspscripts.dev"
+					"url": "https://db.waspscripts.com"
 				}
 			]
 		}

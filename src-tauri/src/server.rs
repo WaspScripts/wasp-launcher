@@ -50,9 +50,9 @@ pub fn handle_client(mut stream: TcpStream, app: tauri::AppHandle) -> bool {
 
     // Determine redirect target
     let redirect_url = if code.is_some() {
-        "https://waspscripts.dev/auth/launcher/successful"
+        "https://waspscripts.com/auth/launcher/successful"
     } else {
-        "https://waspscripts.dev/auth/launcher/failed"
+        "https://waspscripts.com/auth/launcher/failed"
     };
 
     let response = send_redirect(redirect_url);

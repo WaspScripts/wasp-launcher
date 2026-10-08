@@ -28,7 +28,7 @@
 	async function getNewSessionToken() {
 		let result = ""
 		try {
-			const response = await fetch("https://api.waspscripts.dev/session", {
+			const response = await fetch("https://api.waspscripts.com/session", {
 				method: "GET",
 				headers: {
 					authorization: "Bearer " + session.access_token,

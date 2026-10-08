@@ -17,12 +17,12 @@ const config = {
 					"http://tauri.localhost",
 					"http://localhost:*",
 					"http://ipc.localhost",
-					"https://waspscripts.dev",
-					"https://db.waspscripts.dev",
-					"https://api.waspscripts.dev",
+					"https://waspscripts.com",
+					"https://db.waspscripts.com",
+					"https://api.waspscripts.com",
 					"ws://localhost:*",
-					"ws://db.waspscripts.dev",
-					"wss://db.waspscripts.dev"
+					"ws://db.waspscripts.com",
+					"wss://db.waspscripts.com"
 				]
 			}
 		}
