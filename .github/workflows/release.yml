@@ -55,6 +55,7 @@ jobs:
         run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0.6.0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -67,6 +68,14 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: upload Linux binary
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tar -czf wasp-launcher-linux-x86_64.tar.gz -C src-tauri/target/release wasp-launcher
+          gh release upload "wasp-launcher-v${{ steps.tauri.outputs.appVersion }}" wasp-launcher-linux-x86_64.tar.gz --clobber
 
   notify:
     needs: publish-tauri
