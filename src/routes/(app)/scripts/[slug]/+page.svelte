@@ -31,8 +31,8 @@
 	{/if}
 
 	<article class="my-4 prose dark:prose-invert">
-		{#await data.details then [content, limits]}
-			{@html mdRenderer.render(replaceScriptContent(script, content, limits))}
+		{#await Promise.all([mdRenderer, data.details]) then [md, [content, limits]]}
+			{@html md.render(replaceScriptContent(script, content, limits))}
 		{/await}
 	</article>
 </div>

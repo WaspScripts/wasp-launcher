@@ -68,7 +68,9 @@ If you keep having issues, it's recommened you close all of your runescape clien
 	<div
 		class="mx-auto prose h-80 w-full min-w-full overflow-y-scroll rounded-md preset-outlined-surface-300-700 p-8 dark:prose-invert"
 	>
-		{@html mdRenderer.render(info)}
+		{#await mdRenderer then md}
+			{@html md.render(info)}
+		{/await}
 	</div>
 
 	<div class="mx-auto my-4 flex gap-2">

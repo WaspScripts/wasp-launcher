@@ -100,7 +100,9 @@ Also while on this tab, the buttons below will affect your development path.`
 	<div
 		class="mx-auto prose h-72 w-full min-w-full overflow-y-scroll rounded-md preset-outlined-surface-300-700 p-6 dark:prose-invert"
 	>
-		{@html mdRenderer.render(info)}
+		{#await mdRenderer then md}
+			{@html md.render(info)}
+		{/await}
 	</div>
 
 	<Switch
